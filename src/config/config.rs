@@ -329,7 +329,8 @@ pub fn init() -> Arc<AppConfigProperties> {
             .unwrap_or(AppConfigProperties::default()),
     );
     if env::var("BOTWAF_CFG_VERBOSE").is_ok() || env::var("VERBOSE").is_ok() {
-        println!("Loaded the configuration: {}", serde_json::to_string(config.as_ref()).unwrap());
+        println!("If you don't want to print the loaded configuration details, you can disable it by set up BOTWAF_CFG_VERBOSE=false.");
+        println!("Loaded the config details: {}", serde_json::to_string(config.as_ref()).unwrap());
     }
     return config;
 }
