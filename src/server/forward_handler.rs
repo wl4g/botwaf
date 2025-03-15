@@ -18,8 +18,29 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-pub mod cache;
-pub mod config;
-pub mod logging;
-pub mod server;
-pub mod updater;
+use anyhow::Result;
+use async_trait::async_trait;
+use axum::{
+    body::Body,
+    http::{
+        self,
+        uri::{Port, Scheme},
+        HeaderValue,
+    },
+    response::Response,
+};
+use hyper::HeaderMap;
+
+#[async_trait]
+pub trait IForwardHandler {
+    async fn http_forward(
+        &self,
+        method: &http::Method,
+        scheme: Option<&Scheme>,
+        host: Option<&str>,
+        port: Option<Port<&str>>,
+        path: &str,
+        headers: &HeaderMap<HeaderValue>,
+        body: Option<Body>,
+    ) -> Result<Response<Body>>;
+}
