@@ -66,7 +66,7 @@ http://localhost:9999/admin/get
 #HTTP/1.1 403 Forbidden
 #content-length: 23
 #date: Sun, 09 Mar 2025 10:07:27 GM
-#x-waf-blocked: true    <== Botwaf Intercepted
+#x-waf-blocked: 1001    <== Botwaf Intercepted
 
 # Corresponding to the Botwaf ModSecurity rule: ↓↓↓
 #SecRuleEngine On
@@ -141,7 +141,7 @@ http://localhost:8888/admin/get
 #Date: Sun, 09 Mar 2025 10:01:52 GMT
 #Content-Length: 23
 #Connection: keep-alive
-#x-waf-blocked: true    <== Botwaf Intercepted
+#x-waf-blocked: 1001    <== Botwaf Intercepted
 ```
 
 ## FAQ
