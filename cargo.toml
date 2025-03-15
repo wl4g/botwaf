@@ -1,0 +1,43 @@
+[package]
+name = "botwaf"
+version = "1.0.0"
+authors = ["James Wong <jameswong1376@gmail.com>"]
+repository = "https://github.com/wl4g/botwaf"
+readme = "README.md"
+license = "MIT"
+description = "Botwaf - A Mini Open Source AI WAF written in Rust."
+keywords = ["AI", "modsecurity", "security", "waf"]
+edition = "2021"
+
+[dependencies]
+axum = "0.8.1"
+hyper = "1.6.0"
+lazy_static = "1.4.0"
+clap = "4.5.7"
+# Notice: If you use modsecurity-1.0.0, you must rely on libmodsecurity>=3.0.13. For Linux,
+# see: /usr/lib/x86_64-linux-gnu/pkgconfig/modsecurity.pc. Rust-1.85 is the latest version of
+# the default source of debian-12 and only supports libmodsecurity-3.0.9.
+modsecurity = "0.1.2"
+serde = { version = "1.0.197", features = ["derive"] }
+# Required rustc >= 1.81.0
+validator = { version = "0.18.1", features = ["derive"] }
+tokio = { version = "1.43.0", features = ["full"] }
+tokio-cron-scheduler = { version = "0.13.0" }
+tower = "0.5.2"
+config = "0.14.0"
+openai = "1.0.0"
+chrono = "0.4.40"
+tracing = "0.1.41"
+async-trait = "0.1.87"
+reqwest = "0.12.12"
+anyhow = "1.0.97"
+dotenv = "0.15.0"
+tracing-subscriber = { version = "0.3.19", features = ["json", "env-filter"] }
+thiserror = "2.0.12"
+serde_json = "1.0.140"
+regex = "1.11.1"
+moka = { version = "0.12.10", features = ["sync", "future"] }
+redis = { version = "0.25.4", features = ["tokio-comp", "cluster-async"] }
+
+[build-dependencies]
+chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
