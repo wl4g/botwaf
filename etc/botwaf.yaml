@@ -1,0 +1,221 @@
+# SPDX-License-Identifier: GNU GENERAL PUBLIC LICENSE Version 3
+#
+# Copyleft (c) 2024 James Wong. This file is part of James Wong.
+# is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# James Wong is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with James Wong.  If not, see <https://www.gnu.org/licenses/>.
+#
+# IMPORTANT: Any software that fully or partially contains or uses materials
+# covered by this license must also be released under the GNU GPL license.
+# This includes modifications and derived works.
+#
+
+service-name: botwaf
+
+server:
+  host: 0.0.0.0
+  port: 9999
+
+logging:
+  mode: Human
+  level: DEBUG
+
+cache:
+  provider: Memory # Memory|Redis
+  memory:
+    initial-capacity: 32
+    max-capacity: 65535
+    ttl: 3600000
+    eviction-policy: LRU
+  redis:
+    nodes: ["redis://127.0.0.1:6379"]
+    #username: "<YOUR_REDIS_USERNAME>" # eg: "default"
+    #password: "<YOUR_REDIS_PASSWORD>" # eg: "bitnami", refer to: .env
+    connection-timeout: 3000
+    response-timeout: 6000
+    retries: 1
+    max-retry-wait: 65536
+    min-retry-wait: 1280
+    read-from-replica: true
+
+botwaf:
+  # Blocked response status code when ModSecurity engine forbidded. If not set, the modsec matched status code.
+  # Notice: Nginx support status code range: 300-599.
+  blocked-status-code: 433
+  # Blocked response header name when ModSecurity engine forbidded.
+  blocked-header-name: "X-Botwaf-Blocked"
+  # Addition response modsec rule id when ModSecurity engine forbidded.
+  allow-addition-modsec-info: true
+  analytics:
+    - name: "default"
+      kind: "SIMPLE_LLM"
+      cron: "0 * * * * *"
+      channel-size: 200
+  # see:https://platform.openai.com/docs/guides/completions
+  # see:https://help.aliyun.com/zh/model-studio/getting-started/what-is-model-studio#16693d2e3fmir
+  llm:
+    # Notice: 应使用 '__' 来区分不同层级的结构体属性, 如: BOTWAF__LLM__API_KEY 才能匹配 BotwafProperties{llm:LlmProperties{api_key}}
+    api-url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    #api-key: "<YOUR_API_KEY>" # refer to:./.env
+    model: "qwen-plus"
+    system-prompt: |-
+      You are a security expert.
+      You are given a list of rules and a request.
+      You must determine if the request is safe or not.
+      If the request is safe, you must return "safe".
+      If the request is not safe, you must return "unsafe" and provide a reason.
+      You must also provide a list of rules that were used to determine the result.
+      You must also providea list of rules that were not used to determine the result.
+  forward:
+    #http-proxy: "http://127.0.0.1:8118"
+    connect-timeout: 5
+    read-timeout: 10
+    total-timeout: 15
+    verbose: true
+    # Getting upstream destination header name from frontend(e.g: nginx)
+    upstream-destination-header-name: "X-Upstream-Destination"
+  static-rules:
+    - name: "forbidden_admin_path"
+      kind: "RAW"
+      desc: "Block access to admin paths"
+      severity: "high"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@rx admin" "id:1000,phase:1,deny,status:403,msg:'Forbidden Admin Path Detected'"
+
+    - name: "path_traversal_attack"
+      kind: "RAW"
+      desc: "Block path traversal attacks"
+      severity: "high"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@rx \.\./|\.\.%2e|lang=\.\./|\.\.%2e" "id:1001,phase:1,deny,status:403,msg:'Path Traversal Attack Detected'"
+
+    - name: "php_code_injection"
+      kind: "RAW"
+      desc: "Block PHP code injection attempts"
+      severity: "high"
+      value: |-
+        SecRuleEngine On
+        SecRule ARGS_NAMES|ARGS|REQUEST_URI "@rx allow_url_include|php://input" "id:1002,phase:2,deny,status:403,msg:'PHP Code Injection Attempt Detected'"
+
+    - name: "sql_injection_or_function_call"
+      kind: "RAW"
+      desc: "Block SQL injection or function call attempts"
+      severity: "high"
+      value: |-
+        SecRuleEngine On
+        SecRule ARGS_NAMES|ARGS|REQUEST_URI "@rx call_user_func|invokefunction|\x5Cthink\x5Capp/invokefunction" "id:1003,phase:2,deny,status:403,msg:'SQL Injection or Function Call Attempt Detected'"
+
+    - name: "sensitive_env_file_access"
+      kind: "RAW"
+      desc: "Block access to sensitive .env files"
+      severity: "high"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@rx /\.env$" "id:1004,phase:1,deny,status:403,msg:'Attempt to Access Sensitive .env File Detected'"
+
+    - name: "malicious_scanning_tool"
+      kind: "RAW"
+      desc: "Block requests from malicious scanning tools"
+      severity: "medium"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_HEADERS:User-Agent "@rx Custom-AsyncHttpClient|HTTP Banner Detection" "id:1005,phase:1,deny,status:403,msg:'Malicious Scanning Tool Detected'"
+
+    - name: "kubernetes_api_probing"
+      kind: "RAW"
+      desc: "Block Kubernetes API probing attempts"
+      severity: "high"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@rx /apis/|/v1/" "id:1006,phase:1,deny,status:403,msg:'Kubernetes API Probing Detected'"
+
+    - name: "git_repository_file_access"
+      kind: "RAW"
+      desc: "Block access to Git repository files"
+      severity: "high"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@rx /\.git/" "id:1007,phase:1,deny,status:403,msg:'Attempt to Access Git Repository Files Detected'"
+
+    - name: "suspicious_head_request"
+      kind: "RAW"
+      desc: "Block suspicious HEAD requests"
+      severity: "medium"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_METHOD "@streq HEAD" "id:1008,phase:1,deny,status:403,msg:'Suspicious HEAD Request Detected'"
+
+    - name: "docker_api_probing"
+      kind: "RAW"
+      desc: "Block Docker API probing attempts"
+      severity: "high"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@streq /containers/json" "id:1009,phase:1,deny,status:403,msg:'Attempt to Probe Docker API Detected'"
+
+    - name: "potential_abuse_of_wordpress_cron"
+      kind: "RAW"
+      desc: "Block potential abuse of WordPress cron"
+      severity: "medium"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@rx wp-cron\.php" "id:1010,phase:1,deny,status:403,msg:'Potential Abuse of WordPress Cron Detected'"
+
+    - name: "frequent_access_to_robots_txt"
+      kind: "RAW"
+      desc: "Block frequent access to robots.txt"
+      severity: "medium"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@streq /robots.txt" "id:1011,phase:1,deny,status:403,msg:'Frequent Access to robots.txt Detected'"
+
+    - name: "access_sensitive_config_files"
+      kind: "RAW"
+      desc: "Block access to sensitive configuration files"
+      severity: "high"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@rx \.(txt|yml|yaml|ini|conf|toml|hcon|json|sc|secret|pem|p12|p8|credentials|aws)$" "id:1012,phase:1,deny,status:403,msg:'Attempt to Access Sensitive Configuration Files Detected'"
+
+    - name: "access_aws_related_paths"
+      kind: "RAW"
+      desc: "Block access to AWS related paths or files"
+      severity: "high"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@rx \.AWS_|aws|\.aws" "id:1013,phase:1,deny,status:403,msg:'Attempt to Access AWS Related Paths or Files Detected'"
+
+    - name: "access_debug_interface"
+      kind: "RAW"
+      desc: "Block access to debug interface"
+      severity: "high"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@streq /debug/default/view" "id:1014,phase:1,deny,status:403,msg:'Attempt to Access Debug Interface Detected'"
+
+    - name: "access_sensitive_application_paths"
+      kind: "RAW"
+      desc: "Block access to sensitive application paths"
+      severity: "high"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@rx /(user|backend|api|admin|server)/" "id:1015,phase:1,deny,status:403,msg:'Attempt to Access Sensitive Application Paths Detected'"
+
+    - name: "access_script_files"
+      kind: "RAW"
+      desc: "Block access to script files"
+      severity: "medium"
+      value: |-
+        SecRuleEngine On
+        SecRule REQUEST_URI "@rx \.(py|js)$" "id:1016,phase:1,deny,status:403,msg:'Attempt to Access Script Files Detected'"
