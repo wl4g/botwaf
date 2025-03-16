@@ -104,11 +104,15 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
         .build()
         .expect("Error building transaction");
 
-    // Process the URI and headers with ModSecurity engine.
-    if let Some(uri) = incoming.query.to_owned() {
-        transaction.process_uri(&uri, &incoming.method, "1.1").expect("Error processing URI");
-    }
+    // Process the request URI with ModSecurity engine.
+    transaction
+        .process_uri(&incoming.path, &incoming.method, "1.1")
+        .expect("Error processing URI");
+    // Process the request headers with ModSecurity engine.
     transaction.process_request_headers().expect("Error processing request headers");
+    // Process the request body with ModSecurity engine.
+    let req_body = incoming.body.to_owned().unwrap_or_default().to_vec();
+    transaction.append_request_body(&req_body).expect("Error processing request body");
 
     // Check if the request is blocked by ModSecurity engine.
     if let Some(intervention) = transaction.intervention() {
