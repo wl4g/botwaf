@@ -42,7 +42,7 @@ use axum::{
 };
 use modsecurity::{ModSecurity, Rules};
 use regex::Regex;
-use std::sync::Arc;
+use std::{env, sync::Arc};
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 
@@ -185,6 +185,8 @@ ____
     eprintln!("                Package Version: {}", env!("CARGO_PKG_VERSION").to_string());
     eprintln!("                Git Commit Hash: {}", GIT_COMMIT_HASH);
     eprintln!("                 Git Build Date: {}", GIT_BUILD_DATE);
+    let load_config = env::var("BOTWAF_CFG_PATH").unwrap_or("Default".to_string());
+    eprintln!("             Load Configuration: {}", load_config);
 
     logging::init_components().await;
 

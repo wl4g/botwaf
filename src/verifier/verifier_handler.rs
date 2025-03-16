@@ -54,7 +54,7 @@ impl VerifierHandlerManager {
     }
 
     pub async fn start() {
-        tracing::info!("Initializing to verifier handlers");
+        tracing::info!("Initializing to verifier handlers ...");
 
         for config in &config::CFG.botwaf.verifiers {
             if config.kind == SimpleExecuteBasedHandler::KIND {

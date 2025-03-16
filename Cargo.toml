@@ -6,7 +6,7 @@ repository = "https://github.com/wl4g/botwaf"
 readme = "README.md"
 license = "GPL-3.0"
 description = "Botwaf - A Mini Open Source AI Bot WAF written in Rust."
-keywords = ["AI", "modsecurity", "security", "waf"]
+keywords = ["AI", "Modsecurity", "Security", "WAF"]
 edition = "2021"
 
 [dependencies]

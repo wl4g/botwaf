@@ -43,7 +43,7 @@ impl SimpleExecuteBasedHandler {
 
     pub(super) async fn verify(&self) {
         tracing::info!("Simple Execute verifing ...");
-        todo!()
+        tracing::info!("TODO");
     }
 }
 

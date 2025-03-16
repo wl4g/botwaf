@@ -1,3 +1,5 @@
+use std::env;
+
 use crate::{
     config::{
         config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
@@ -29,6 +31,8 @@ __  __                        ___
     eprintln!("                Package Version: {}", env!("CARGO_PKG_VERSION").to_string());
     eprintln!("                Git Commit Hash: {}", GIT_COMMIT_HASH);
     eprintln!("                 Git Build Date: {}", GIT_BUILD_DATE);
+    let load_config = env::var("BOTWAF_CFG_PATH").unwrap_or("Default".to_string());
+    eprintln!("             Load Configuration: {}", load_config);
 
     logging::init_components().await;
 

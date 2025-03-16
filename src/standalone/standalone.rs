@@ -18,6 +18,8 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use std::env;
+
 use anyhow::{Error, Ok};
 use axum::Router;
 use tokio::net::TcpListener;
@@ -50,6 +52,8 @@ ____    __                        __            ___
     eprintln!("                Package Version: {}", env!("CARGO_PKG_VERSION").to_string());
     eprintln!("                Git Commit Hash: {}", GIT_COMMIT_HASH);
     eprintln!("                 Git Build Date: {}", GIT_BUILD_DATE);
+    let load_config = env::var("BOTWAF_CFG_PATH").unwrap_or("Default".to_string());
+    eprintln!("             Load Configuration: {}", load_config);
 
     logging::init_components().await;
 

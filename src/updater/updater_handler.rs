@@ -52,7 +52,7 @@ impl UpdaterHandlerManager {
     }
 
     pub async fn start() {
-        tracing::info!("Initializing to updater handlers");
+        tracing::info!("Initializing to updater handlers ...");
 
         for config in &config::CFG.botwaf.updaters {
             if config.kind == SimpleLLMUpdaterHandler::KIND {
