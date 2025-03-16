@@ -25,6 +25,12 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = app.get_matches();
     match matches.subcommand() {
         Some((name, _)) => match name {
+            "standalone" => {
+                // TODO When server started blocking exeuction problem.
+                server::start().await?;
+                updater::start().await?;
+                verifier::start().await?;
+            }
             "serve" => {
                 server::start().await?;
             }
