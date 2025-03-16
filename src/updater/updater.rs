@@ -5,6 +5,7 @@ use crate::{
     },
     logging,
     server::server::BotWafState,
+    updater::updater_handler::UpdaterHandlerManager,
 };
 use anyhow::Error;
 use axum::Router;
@@ -25,12 +26,14 @@ pub async fn start() -> Result<(), Box<dyn std::error::Error>> {
 "#;
     eprintln!("");
     eprintln!("{}", ascii_name);
-    eprintln!("                Program Version: {:?}", GIT_VERSION);
-    eprintln!("                Package Version: {:?}", env!("CARGO_PKG_VERSION").to_string());
-    eprintln!("                Git Commit Hash: {:?}", GIT_COMMIT_HASH);
-    eprintln!("                 Git Build Date: {:?}", GIT_BUILD_DATE);
+    eprintln!("                Program Version: {}", GIT_VERSION);
+    eprintln!("                Package Version: {}", env!("CARGO_PKG_VERSION").to_string());
+    eprintln!("                Git Commit Hash: {}", GIT_COMMIT_HASH);
+    eprintln!("                 Git Build Date: {}", GIT_BUILD_DATE);
 
     logging::init_components().await;
+
+    UpdaterHandlerManager::start().await;
 
     let botwaf_state = BotWafState::new();
     let app_router = build_app_router(botwaf_state).await?;

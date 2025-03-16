@@ -18,7 +18,7 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use crate::config::config::UpdaterProperties;
+use crate::config::config::VerifierProperties;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
@@ -27,14 +27,14 @@ use super::verifier_handler::IVerifierHandler;
 
 #[derive(Clone)]
 pub struct SimpleExecuteBasedHandler {
-    config: UpdaterProperties,
+    config: VerifierProperties,
     scheduler: Arc<JobScheduler>,
 }
 
 impl SimpleExecuteBasedHandler {
     pub const KIND: &'static str = "SIMPLE_EXECUTE";
 
-    pub async fn init(config: &UpdaterProperties) -> Arc<Self> {
+    pub async fn init(config: &VerifierProperties) -> Arc<Self> {
         Arc::new(Self {
             config: config.to_owned(),
             scheduler: Arc::new(JobScheduler::new_with_channel_size(config.channel_size).await.unwrap()),

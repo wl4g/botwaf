@@ -52,15 +52,8 @@ impl UpdaterHandlerManager {
     }
 
     pub async fn start() {
-        // Register all handlers
-        // config::CFG.botwaf.analytics
-        //     .iter()
-        //     .filter(|x| x.kind == SimpleLlmAnalyticsHandler::KIND)
-        //     .for_each(|x| {
-        //         SimpleLlmAnalyticsHandler::new_and_init(x).await;
-        //     });
+        tracing::info!("Initializing to updater handlers");
 
-        // Register all handlers
         for config in &config::CFG.botwaf.updaters {
             if config.kind == SimpleLLMUpdaterHandler::KIND {
                 tracing::info!("Initializing implementation handler: {}", config.name);

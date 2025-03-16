@@ -181,10 +181,10 @@ pub async fn start() -> Result<(), Error> {
 "#;
     eprintln!("");
     eprintln!("{}", ascii_name);
-    eprintln!("                Program Version: {:?}", GIT_VERSION);
-    eprintln!("                Package Version: {:?}", env!("CARGO_PKG_VERSION").to_string());
-    eprintln!("                Git Commit Hash: {:?}", GIT_COMMIT_HASH);
-    eprintln!("                 Git Build Date: {:?}", GIT_BUILD_DATE);
+    eprintln!("                Program Version: {}", GIT_VERSION);
+    eprintln!("                Package Version: {}", env!("CARGO_PKG_VERSION").to_string());
+    eprintln!("                Git Commit Hash: {}", GIT_COMMIT_HASH);
+    eprintln!("                 Git Build Date: {}", GIT_BUILD_DATE);
 
     logging::init_components().await;
 

@@ -54,8 +54,9 @@ impl VerifierHandlerManager {
     }
 
     pub async fn start() {
-        // Register all handlers
-        for config in &config::CFG.botwaf.updaters {
+        tracing::info!("Initializing to verifier handlers");
+
+        for config in &config::CFG.botwaf.verifiers {
             if config.kind == SimpleExecuteBasedHandler::KIND {
                 tracing::info!("Initializing implementation verifier handler: {}", config.name);
                 let handler = SimpleExecuteBasedHandler::init(config).await;
@@ -65,14 +66,14 @@ impl VerifierHandlerManager {
                     .register(config.name.to_owned(), handler.clone())
                     .await
                 {
-                    tracing::error!("Failed to register LLM analytics handler: {}", e);
+                    tracing::error!("Failed to register verifier handler: {}", e);
                 }
-                tracing::info!("Registered implementation handler: {}", config.name);
+                tracing::info!("Registered implementation verifier handler: {}", config.name);
             }
         }
 
         // Start up all handlers
-        for config in &config::CFG.botwaf.updaters {
+        for config in &config::CFG.botwaf.verifiers {
             match Self::get().lock().await.get_implementation(config.name.to_owned()).await {
                 Ok(handler) => {
                     tracing::info!("Starting implementation verifier handler: {}", config.name);

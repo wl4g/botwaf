@@ -31,11 +31,11 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "serve" => {
                 server::start().await?;
             }
-            "verifier" => {
-                verifier::start().await?;
-            }
             "updater" => {
                 updater::start().await?;
+            }
+            "verifier" => {
+                verifier::start().await?;
             }
             _ => {
                 eprintln!("Invalid commands and Use <command> --help for more information about a specific command.");
