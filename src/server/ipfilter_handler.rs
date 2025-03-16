@@ -18,17 +18,20 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use std::sync::Arc;
+
 use anyhow::Error;
-use hyper::HeaderMap;
+
+use crate::types::server::HttpIncomingRequest;
 
 #[async_trait::async_trait]
 pub trait IPFilterHandler {
     /// Checks if an IP address is in the blacklist
-    async fn is_blocked(&self, headers: &HeaderMap) -> Result<bool, Error>;
+    async fn is_blocked(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error>;
 
     /// Adds an IP address to the blacklist
-    async fn block_ip(&self, headers: &HeaderMap) -> Result<bool, Error>;
+    async fn block_ip(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error>;
 
     /// Removes an IP address from the blacklist
-    async fn unblock_ip(&self, headers: &HeaderMap) -> Result<bool, Error>;
+    async fn unblock_ip(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error>;
 }

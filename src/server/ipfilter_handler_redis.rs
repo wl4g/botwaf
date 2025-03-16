@@ -19,9 +19,11 @@
 // This includes modifications and derived works.
 
 use super::ipfilter_handler::IPFilterHandler;
-use crate::cache::{redis::StringRedisCache, ICache};
-use anyhow::{Error, Result};
-use hyper::HeaderMap;
+use crate::{
+    cache::{redis::StringRedisCache, ICache},
+    types::server::HttpIncomingRequest,
+};
+use anyhow::{Error, Ok, Result};
 use std::{net::IpAddr, str::FromStr, sync::Arc};
 
 pub struct RedisIPFilterHandler {
@@ -35,25 +37,15 @@ impl RedisIPFilterHandler {
         Arc::new(Self { redis_cache, redis_key })
     }
 
-    fn get_client_ip(&self, headers: &HeaderMap) -> Result<String> {
-        let ip = headers
-            .get("X-Forwarded-For".to_string())
-            .and_then(|h| h.to_str().ok())
-            .ok_or_else(||
-                // Only record warning logs instead of error stack
-                anyhow::anyhow!(
-                    format!("Missing upstream destination header with 'X-Forwarded-For'")
-                ))?;
-
-        tracing::debug!("Extracted the client ip: {}", ip.to_owned());
-        Ok(ip.to_owned())
+    fn get_client_ip(&self, incoming: Arc<HttpIncomingRequest>) -> Result<String, Error> {
+        incoming.client_ip.as_ref().cloned().ok_or_else(|| anyhow::anyhow!("Client IP not found"))
     }
 
-    /// Converts an IP address to a bitmap offset
-    fn ip_to_offset(&self, headers: &HeaderMap) -> u64 {
-        let ip = IpAddr::from_str(self.get_client_ip(headers).unwrap().as_ref()).unwrap();
+    /// Converts an IP address to a bitmap offset.
+    fn get_ip_bitmap_offset(&self, incoming: Arc<HttpIncomingRequest>) -> Result<u64, Error> {
+        let ip = IpAddr::from_str(self.get_client_ip(incoming)?.as_ref())?;
         match ip {
-            IpAddr::V4(ipv4) => u32::from(ipv4) as u64,
+            IpAddr::V4(ipv4) => Ok(u32::from(ipv4) as u64),
             IpAddr::V6(ipv6) => {
                 // For IPv6, we use a simplified mapping approach
                 let octets = ipv6.octets();
@@ -61,7 +53,8 @@ impl RedisIPFilterHandler {
                 for i in 0..8 {
                     result = (result << 8) | ((((octets[i * 2] as u16) << 8) | (octets[i * 2 + 1] as u16)) as u64);
                 }
-                result % (u32::MAX as u64) // Limit to 32-bit range
+                let offset = result % (u32::MAX as u64); // Limit to 32-bit range
+                Ok(offset)
             }
         }
     }
@@ -69,18 +62,18 @@ impl RedisIPFilterHandler {
 
 #[async_trait::async_trait]
 impl IPFilterHandler for RedisIPFilterHandler {
-    async fn is_blocked(&self, headers: &HeaderMap) -> Result<bool, Error> {
-        let offset = self.ip_to_offset(headers);
+    async fn is_blocked(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error> {
+        let offset = self.get_ip_bitmap_offset(incoming)?;
         self.redis_cache.get_bit(self.redis_key.clone(), offset).await
     }
 
-    async fn block_ip(&self, headers: &HeaderMap) -> Result<bool, Error> {
-        let offset = self.ip_to_offset(headers);
+    async fn block_ip(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error> {
+        let offset = self.get_ip_bitmap_offset(incoming)?;
         self.redis_cache.set_bit(self.redis_key.clone(), offset, true).await
     }
 
-    async fn unblock_ip(&self, headers: &HeaderMap) -> Result<bool, Error> {
-        let offset = self.ip_to_offset(headers);
+    async fn unblock_ip(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error> {
+        let offset = self.get_ip_bitmap_offset(incoming)?;
         self.redis_cache.set_bit(self.redis_key.clone(), offset, false).await
     }
 }

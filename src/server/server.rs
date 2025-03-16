@@ -26,8 +26,8 @@ use crate::{
         forward_handler::IForwardHandler, forward_handler_http::HttpForwardHandler, ipfilter_handler::IPFilterHandler,
         ipfilter_handler_redis::RedisIPFilterHandler,
     },
+    types::server::HttpIncomingRequest,
 };
-use axum::body::to_bytes;
 use axum::{
     body::Body,
     extract::State,
@@ -36,7 +36,6 @@ use axum::{
     response::{IntoResponse, Response},
     Router,
 };
-use hyper::Method;
 use modsecurity::{ModSecurity, Rules};
 use regex::Regex;
 use std::sync::Arc;
@@ -81,29 +80,20 @@ impl BotWafState {
 }
 
 async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>, next: Next) -> impl IntoResponse {
-    // Extract the request body as bytes and restore the request object.
-    let (parts, body) = req.into_parts();
-    let bytes = to_bytes(body, 65535).await.expect("Failed to collect request body");
-    let (req, body) = (Request::from_parts(parts, Body::from(bytes.clone())), bytes);
-
-    let method = req.method();
     let uri = req.uri();
-    let scheme = uri.scheme();
-    let host = uri.host();
-    let port = uri.port();
-    let path = uri.path();
-    let headers = req.headers();
-
-    // Check if the IP address is blocked.
-    if state.ipfilter_handler.is_blocked(headers).await.unwrap_or(false) {
-        let code = StatusCode::from_u16(config::CFG.botwaf.blocked_status_code.unwrap()).unwrap();
-        return Response::builder().status(code).body("Access denied by BotWaf IP Filter".into()).unwrap();
+    // Skip the excluded paths.
+    if EXCLUDED_PATHS.contains(&uri.path()) {
+        tracing::debug!("Passing excluded path: {}", &uri.path());
+        return next.run(req).await;
     }
 
-    // Skip the excluded paths.
-    if EXCLUDED_PATHS.contains(&path) {
-        tracing::debug!("Passing excluded path: {}", &path);
-        return next.run(req).await;
+    // Wrap to unified incoming request.
+    let incoming = HttpIncomingRequest::new(req).await;
+
+    // Check if the request client IP address is blocked.
+    if state.ipfilter_handler.is_blocked(incoming.to_owned()).await.unwrap_or(false) {
+        let code = StatusCode::from_u16(config::CFG.botwaf.blocked_status_code.unwrap()).unwrap();
+        return Response::builder().status(code).body("Access denied by BotWaf IP Filter".into()).unwrap();
     }
 
     // Create a ModSecurity engine transaction with rules.
@@ -115,8 +105,8 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
         .expect("Error building transaction");
 
     // Process the URI and headers with ModSecurity engine.
-    if let Some(uri) = req.uri().to_string().split('?').next() {
-        transaction.process_uri(uri, req.method().as_str(), "1.1").expect("Error processing URI");
+    if let Some(uri) = incoming.query.to_owned() {
+        transaction.process_uri(&uri, &incoming.method, "1.1").expect("Error processing URI");
     }
     transaction.process_request_headers().expect("Error processing request headers");
 
@@ -128,7 +118,7 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
                 .log()
                 .map(|msg| msg.to_string())
                 .unwrap_or_else(|| "Access denied by BotWaf".to_string());
-            tracing::info!("[BotWaf] [AccessDeined] - {}, reason: {}", path, logmsg);
+            tracing::info!("[BotWaf] [AccessDeined] - {}, reason: {}", incoming.path, logmsg);
 
             // Getting forbidded by modsec rule id.
             let mut rule_id = String::from("Masked");
@@ -158,22 +148,13 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
     }
 
     // Forwarding request to the upstream servers.
-    let opt_body = if method == Method::GET || method == Method::HEAD {
-        None
-    } else {
-        Some(body.into())
-    };
-    match state
-        .forward_handler
-        .http_forward(method, scheme, host, port, path, headers, opt_body)
-        .await
-    {
+    match state.forward_handler.http_forward(incoming.to_owned()).await {
         Ok(response) => {
-            tracing::info!("[BotWaf] [Forwarded] - {}", path);
+            tracing::info!("[BotWaf] [Forwarded] - {}", &incoming.path);
             response
         }
         Err(err) => {
-            tracing::warn!("[BotWaf] [ForwardErr] - {} - {}", path, err);
+            tracing::warn!("[BotWaf] [ForwardErr] - {} - {}", &incoming.path, err);
             (StatusCode::INTERNAL_SERVER_ERROR, format!("Gateway Forwarded Error")).into_response()
         }
     }

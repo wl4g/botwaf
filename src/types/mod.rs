@@ -18,14 +18,4 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::sync::Arc;
-
-use crate::types::server::HttpIncomingRequest;
-use anyhow::Result;
-use async_trait::async_trait;
-use axum::{body::Body, response::Response};
-
-#[async_trait]
-pub trait IForwardHandler {
-    async fn http_forward(&self, incoming: Arc<HttpIncomingRequest>) -> Result<Response<Body>>;
-}
+pub mod server;
