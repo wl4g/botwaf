@@ -27,6 +27,8 @@ use axum::{
 
 use serde::{Deserialize, Serialize};
 
+use crate::config::config;
+
 #[derive(Serialize, Deserialize)]
 pub struct HttpThreatSampleRecord {
     content: String,
@@ -50,8 +52,9 @@ pub struct HttpIncomingRequest {
 impl HttpIncomingRequest {
     pub async fn new(req: Request<Body>) -> Arc<Self> {
         let (parts, body) = req.into_parts();
-        // TODO limit body size use by configuration.
-        let bytes = to_bytes(body, 65535).await.expect("Failed to collect request body");
+        let bytes = to_bytes(body, config::CFG.botwaf.forward.max_body_bytes)
+            .await
+            .expect("Failed to collect request body");
         let (req, body) = (Request::from_parts(parts, Body::from(bytes.clone())), bytes);
         let uri = req.uri();
 

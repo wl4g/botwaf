@@ -167,10 +167,31 @@ pub struct VerifierProperties {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LlmProperties {
-    #[serde(rename = "api-url")]
-    pub api_url: String,
+    // see:https://platform.openai.com/docs/guides/completions
+    // see:https://github.com/ollama/ollama/blob/main/docs/api.md#generate-a-completion
+    // see:https://help.aliyun.com/zh/model-studio/getting-started/what-is-model-studio#16693d2e3fmir
+    #[serde(rename = "embedding")]
+    pub embedding: EmbeddingProperties,
+    #[serde(rename = "generate")]
+    pub generate: GenerateProperties,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EmbeddingProperties {
+    #[serde(rename = "api-uri")]
+    pub api_uri: String,
     #[serde(rename = "api-key")]
-    pub api_key: String,
+    pub api_key: Option<String>,
+    #[serde(rename = "model")]
+    pub model: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GenerateProperties {
+    #[serde(rename = "api-uri")]
+    pub api_uri: String,
+    #[serde(rename = "api-key")]
+    pub api_key: Option<String>,
     #[serde(rename = "model")]
     pub model: String,
     #[serde(rename = "system-prompt")]
@@ -179,6 +200,8 @@ pub struct LlmProperties {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ForwardProperties {
+    #[serde(rename = "max-body-bytes")]
+    pub max_body_bytes: usize,
     #[serde(rename = "http-proxy")]
     pub http_proxy: Option<String>,
     #[serde(rename = "connect-timeout")]
@@ -286,6 +309,7 @@ impl Default for UpdaterProperties {
         }
     }
 }
+
 impl Default for VerifierProperties {
     fn default() -> Self {
         VerifierProperties {
@@ -300,8 +324,27 @@ impl Default for VerifierProperties {
 impl Default for LlmProperties {
     fn default() -> Self {
         LlmProperties {
-            api_url: String::from("https://dashscope.aliyuncs.com/compatible-mode/v1"),
-            api_key: String::from("<your_api_key>"),
+            embedding: EmbeddingProperties::default(),
+            generate: GenerateProperties::default(),
+        }
+    }
+}
+
+impl Default for EmbeddingProperties {
+    fn default() -> Self {
+        EmbeddingProperties {
+            api_uri: String::from("https://dashscope.aliyuncs.com/compatible-mode/v1"),
+            api_key: None,
+            model: String::from("bge-m3:latest"),
+        }
+    }
+}
+
+impl Default for GenerateProperties {
+    fn default() -> Self {
+        GenerateProperties {
+            api_uri: String::from("https://dashscope.aliyuncs.com/compatible-mode/v1"),
+            api_key: None,
             model: String::from("qwen-plus"),
             system_prompt: String::from(
                 "You are a security expert.\n\
@@ -319,6 +362,7 @@ impl Default for LlmProperties {
 impl Default for ForwardProperties {
     fn default() -> Self {
         ForwardProperties {
+            max_body_bytes: 65535,
             http_proxy: None,
             connect_timeout: 5,
             read_timeout: 5,
@@ -329,7 +373,7 @@ impl Default for ForwardProperties {
     }
 }
 
-pub fn init() -> Arc<AppConfigProperties> {
+fn init() -> Arc<AppConfigProperties> {
     dotenv().ok(); // Notice: Must be called before parse from environment file (.env).
 
     let config = Arc::new(

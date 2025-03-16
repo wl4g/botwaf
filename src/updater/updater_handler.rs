@@ -23,6 +23,7 @@ use std::{collections::HashMap, sync::Arc};
 use anyhow::Error;
 use async_trait::async_trait;
 use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
 use crate::{config::config, updater::updater_handler_llm::SimpleLLMUpdaterHandler};
@@ -102,16 +103,25 @@ impl UpdaterHandlerManager {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct BotWafAccessEvent {
-    pub uuid: String,
-    pub path: String,
+    // Request information.
     pub method: String,
-    pub headers: String,
-    pub body: String,
-    pub status_code: i32,
-    pub response_headers: String,
-    pub response_body: String,
-    pub duration: i64,
-    pub timestamp: String,
+    pub scheme: Option<String>,
+    pub host: Option<String>,
+    pub port: Option<u16>,
+    pub headers: Option<HashMap<String, Option<String>>>,
+    pub path: String,
+    pub query: Option<String>,
+    pub body: Option<String>,
+    // Additional request information.
+    pub req_id: Option<String>,
+    pub client_ip: Option<String>,
+    pub start_time: u64,
+    // Response information.
+    pub resp_status_code: Option<i32>,
+    pub resp_headers: Option<HashMap<String, Option<String>>>,
+    pub resp_body: Option<String>,
+    // Additional response information.
+    pub duration: Option<u64>,
 }

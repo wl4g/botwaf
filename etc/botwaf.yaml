@@ -66,21 +66,29 @@ botwaf:
       cron: "0 * * * * *"
       channel-size: 200
   # see:https://platform.openai.com/docs/guides/completions
+  # see:https://github.com/ollama/ollama/blob/main/docs/api.md#generate-a-completion
   # see:https://help.aliyun.com/zh/model-studio/getting-started/what-is-model-studio#16693d2e3fmir
   llm:
-    # Notice: 应使用 '__' 来区分不同层级的结构体属性, 如: BOTWAF__LLM__API_KEY 才能匹配 BotwafProperties{llm:LlmProperties{api_key}}
-    api-url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    #api-key: "<YOUR_API_KEY>" # refer to:./.env
-    model: "qwen-plus"
-    system-prompt: |-
-      You are a security expert.
-      You are given a list of rules and a request.
-      You must determine if the request is safe or not.
-      If the request is safe, you must return "safe".
-      If the request is not safe, you must return "unsafe" and provide a reason.
-      You must also provide a list of rules that were used to determine the result.
-      You must also providea list of rules that were not used to determine the result.
+    embedding:
+      api-uri: "http://localhost:11434/api/embed"
+      #api-key: "<YOUR EMBEDDING API KEY>" # refer to:./.env
+      model: "bge-m3:latest"
+    generate:
+      # Notice: The '__' should be used to distinguish different levels of structure properties, such as:
+      # BOTWAF__LLM__API_KEY to match BotwafProperties{llm:LlmProperties{completion:GenerateProperties{api_key}}}
+      api-uri: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+      #api-key: "<YOUR GENERATE API KEY>" # refer to:./.env
+      model: "qwen-plus"
+      system-prompt: |-
+        You are a security expert.
+        You are given a list of rules and a request.
+        You must determine if the request is safe or not.
+        If the request is safe, you must return "safe".
+        If the request is not safe, you must return "unsafe" and provide a reason.
+        You must also provide a list of rules that were used to determine the result.
+        You must also providea list of rules that were not used to determine the result.
   forward:
+    max-body-bytes: 65535
     #http-proxy: "http://127.0.0.1:8118"
     connect-timeout: 5
     read-timeout: 10

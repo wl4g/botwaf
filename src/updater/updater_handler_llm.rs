@@ -33,7 +33,8 @@ use super::updater_handler::{BotWafAccessEvent, IUpdaterHandler};
 pub struct SimpleLLMUpdaterHandler {
     config: UpdaterProperties,
     scheduler: Arc<JobScheduler>,
-    credentials: Arc<Credentials>,
+    embedding_credentials: Arc<Credentials>,
+    generate_credentials: Arc<Credentials>,
 }
 
 impl SimpleLLMUpdaterHandler {
@@ -43,17 +44,21 @@ impl SimpleLLMUpdaterHandler {
         Arc::new(Self {
             config: config.to_owned(),
             scheduler: Arc::new(JobScheduler::new_with_channel_size(config.channel_size).await.unwrap()),
-            credentials: Arc::new(
-                // Default by OPENAI_KEY,OPENAI_BASE_URL.
-                Credentials::new(&config::CFG.botwaf.llm.api_key, &config::CFG.botwaf.llm.api_url),
-            ),
+            // Default used by 'OPENAI_KEY' and 'OPENAI_BASE_URL'.
+            // Not require API key to run model by Ollama default.
+            embedding_credentials: Arc::new(Credentials::new(
+                &config::CFG.botwaf.llm.embedding.api_key.to_owned().unwrap_or_default(),
+                &config::CFG.botwaf.llm.embedding.api_uri,
+            )),
+            generate_credentials: Arc::new(Credentials::new(
+                &config::CFG.botwaf.llm.generate.api_key.to_owned().unwrap_or_default(),
+                &config::CFG.botwaf.llm.generate.api_uri,
+            )),
         })
     }
 
     pub(super) async fn update(&self) {
         tracing::info!("Simple LLM updating ...");
-
-        let credentials = self.credentials.clone();
 
         // TODO
         // for event in self.fetch_events(0, 100).await {
@@ -68,11 +73,11 @@ impl SimpleLLMUpdaterHandler {
             tool_call_id: None,
             tool_calls: None,
         }];
-        let result = ChatCompletion::builder(&config::CFG.botwaf.llm.model, messages.clone())
-            .credentials(credentials.as_ref().clone())
+        let embedding_result = ChatCompletion::builder(&config::CFG.botwaf.llm.embedding.model, messages.clone())
+            .credentials(self.embedding_credentials.as_ref().to_owned())
             .create()
             .await;
-        match result {
+        match embedding_result {
             Ok(ret) => {
                 let msg = ret.choices.first().unwrap().message.clone();
                 // Assistant: Sure! Here's a random crab fact: ...
@@ -81,7 +86,7 @@ impl SimpleLLMUpdaterHandler {
                 // update the ModSecurity rule to state according LLM analysis result
             }
             Err(e) => {
-                tracing::error!("Failed to ask LLM: {}", e);
+                tracing::error!("Failed to LLM embedding: {:?}", e);
                 return;
             }
         }

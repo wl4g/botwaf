@@ -21,7 +21,7 @@ export OLLAMA_HOST='0.0.0.0'
 nohup ollama start >/dev/null &
 ```
 
-- Verify embeddding model
+- Verify embeddding model. [See more ollama API docs](https://github.com/ollama/ollama/blob/main/docs/api.md#generate-a-completion)
 
 ```bash
 curl -X POST http://localhost:11434/api/embed \
