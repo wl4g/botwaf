@@ -73,11 +73,15 @@ botwaf:
       api-uri: "http://localhost:11434/api/embed"
       #api-key: "<YOUR EMBEDDING API KEY>" # refer to:./.env
       model: "bge-m3:latest"
+      org-id: 
+      project-id: 
     generate:
       # Notice: The '__' should be used to distinguish different levels of structure properties, such as:
       # BOTWAF__LLM__API_KEY to match BotwafProperties{llm:LlmProperties{completion:GenerateProperties{api_key}}}
       api-uri: "https://dashscope.aliyuncs.com/compatible-mode/v1"
       #api-key: "<YOUR GENERATE API KEY>" # refer to:./.env
+      org-id: 
+      project-id: 
       model: "qwen-plus"
       system-prompt: |-
         You are a security expert.

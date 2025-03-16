@@ -57,7 +57,7 @@ impl UpdaterHandlerManager {
 
         for config in &config::CFG.botwaf.updaters {
             if config.kind == SimpleLLMUpdaterHandler::KIND {
-                tracing::info!("Initializing implementation handler: {}", config.name);
+                tracing::info!("Initializing implementation updater handler: {}", config.name);
                 let handler = SimpleLLMUpdaterHandler::init(config).await;
                 if let Err(e) = UpdaterHandlerManager::get()
                     .lock()

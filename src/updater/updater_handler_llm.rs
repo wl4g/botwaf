@@ -18,80 +18,184 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use crate::config::config::{self, UpdaterProperties};
+// use openai::chat::{ChatCompletion, ChatCompletionMessage, ChatCompletionMessageRole};
 use async_trait::async_trait;
-use openai::{
-    chat::{ChatCompletion, ChatCompletionMessage, ChatCompletionMessageRole},
-    Credentials,
-};
+
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
+use langchain_rust::{
+    chain::{Chain, ConversationalRetrieverChainBuilder},
+    embedding::openai::OpenAiEmbedder,
+    fmt_message, fmt_template,
+    llm::{OpenAI, OpenAIConfig, OpenAIModel},
+    memory::WindowBufferMemory,
+    message_formatter,
+    prompt::HumanMessagePromptTemplate,
+    prompt_args,
+    schemas::{Document, Message},
+    template_jinja2,
+    vectorstore::{pgvector::StoreBuilder, Retriever, VecStoreOptions, VectorStore},
+};
+
 use super::updater_handler::{BotWafAccessEvent, IUpdaterHandler};
+use crate::config::config::{self, UpdaterProperties};
 
 #[derive(Clone)]
 pub struct SimpleLLMUpdaterHandler {
     config: UpdaterProperties,
     scheduler: Arc<JobScheduler>,
-    embedding_credentials: Arc<Credentials>,
-    generate_credentials: Arc<Credentials>,
+    pgvec_store: Arc<Box<dyn VectorStore>>,
+    generate_openai_config: Arc<OpenAIConfig>,
 }
 
 impl SimpleLLMUpdaterHandler {
     pub const KIND: &'static str = "SIMPLE_LLM";
 
     pub async fn init(config: &UpdaterProperties) -> Arc<Self> {
+        // Build embedding openai config.
+        let mut embedding_openai_config = OpenAIConfig::new().with_api_base(&config::CFG.botwaf.llm.embedding.api_uri);
+        if let Some(api_key) = &config::CFG.botwaf.llm.embedding.api_key {
+            // Default used by 'OPENAI_KEY' and 'OPENAI_BASE_URL'.
+            // Not require API key to run model by Ollama default.
+            embedding_openai_config = embedding_openai_config.with_api_key(api_key);
+        }
+        if let Some(org_id) = &config::CFG.botwaf.llm.embedding.org_id {
+            embedding_openai_config = embedding_openai_config.with_org_id(org_id);
+        }
+        if let Some(project_id) = &config::CFG.botwaf.llm.embedding.project_id {
+            embedding_openai_config = embedding_openai_config.with_org_id(project_id);
+        }
+
+        // Build generate openai config.
+        let mut generate_openai_config = OpenAIConfig::new().with_api_base(&config::CFG.botwaf.llm.generate.api_uri);
+        if let Some(api_key) = &config::CFG.botwaf.llm.generate.api_key {
+            generate_openai_config = generate_openai_config.with_api_key(api_key);
+        }
+        if let Some(org_id) = &config::CFG.botwaf.llm.generate.org_id {
+            generate_openai_config = generate_openai_config.with_org_id(org_id);
+        }
+        if let Some(project_id) = &config::CFG.botwaf.llm.generate.project_id {
+            generate_openai_config = generate_openai_config.with_org_id(project_id);
+        }
+
+        // Build pgvector store.
+        let pgvec_store = StoreBuilder::new()
+            .embedder(OpenAiEmbedder::new(embedding_openai_config))
+            .pre_delete_collection(true)
+            .connection_url("postgresql://postgres:postgres@localhost:5432/postgres")
+            .vector_dimensions(1536)
+            .build()
+            .await
+            .unwrap();
+
         Arc::new(Self {
             config: config.to_owned(),
             scheduler: Arc::new(JobScheduler::new_with_channel_size(config.channel_size).await.unwrap()),
-            // Default used by 'OPENAI_KEY' and 'OPENAI_BASE_URL'.
-            // Not require API key to run model by Ollama default.
-            embedding_credentials: Arc::new(Credentials::new(
-                &config::CFG.botwaf.llm.embedding.api_key.to_owned().unwrap_or_default(),
-                &config::CFG.botwaf.llm.embedding.api_uri,
-            )),
-            generate_credentials: Arc::new(Credentials::new(
-                &config::CFG.botwaf.llm.generate.api_key.to_owned().unwrap_or_default(),
-                &config::CFG.botwaf.llm.generate.api_uri,
-            )),
+            pgvec_store: Arc::new(Box::new(pgvec_store)),
+            generate_openai_config: Arc::new(generate_openai_config),
         })
     }
 
     pub(super) async fn update(&self) {
         tracing::info!("Simple LLM updating ...");
 
+        // Native OpenAI to completions.
+        // let messages = vec![ChatCompletionMessage {
+        //     role: ChatCompletionMessageRole::System,
+        //     content: Some("You are a helpful assistant.".to_string()),
+        //     name: None,
+        //     function_call: None,
+        //     tool_call_id: None,
+        //     tool_calls: None,
+        // }];
+        // let embedding_result = ChatCompletion::builder(&config::CFG.botwaf.llm.embedding.model, messages.clone())
+        //     .credentials(self.embedding_openai_config.as_ref().to_owned())
+        //     .create()
+        //     .await;
+        // match embedding_result {
+        //     Ok(ret) => {
+        //         let msg = ret.choices.first().unwrap().message.clone();
+        //         // Assistant: Sure! Here's a random crab fact: ...
+        //         tracing::info!("{:#?}: {}", msg.role, msg.content.unwrap().trim());
+        //         // send to LLM to analyze
+        //         // update the ModSecurity rule to state according LLM analysis result
+        //     }
+        //     Err(e) => {
+        //         tracing::error!("Failed to LLM embedding: {:?}", e);
+        //         return;
+        //     }
+        // }
+
         // TODO
         // for event in self.fetch_events(0, 100).await {
         //     tracing::info!("Scanning access event: {}", event.uuid);
         // }
 
-        let messages = vec![ChatCompletionMessage {
-            role: ChatCompletionMessageRole::System,
-            content: Some("You are a helpful assistant.".to_string()),
-            name: None,
-            function_call: None,
-            tool_call_id: None,
-            tool_calls: None,
-        }];
-        let embedding_result = ChatCompletion::builder(&config::CFG.botwaf.llm.embedding.model, messages.clone())
-            .credentials(self.embedding_credentials.as_ref().to_owned())
-            .create()
-            .await;
-        match embedding_result {
-            Ok(ret) => {
-                let msg = ret.choices.first().unwrap().message.clone();
-                // Assistant: Sure! Here's a random crab fact: ...
-                tracing::info!("{:#?}: {}", msg.role, msg.content.unwrap().trim());
-                // send to LLM to analyze
-                // update the ModSecurity rule to state according LLM analysis result
-            }
-            Err(e) => {
-                tracing::error!("Failed to LLM embedding: {:?}", e);
-                return;
-            }
+        // TODO: embedding into vector store
+        let documents = vec![
+            Document::new(format!(
+                "\nQuestion: {}\nAnswer: {}\n",
+                "Which is the favorite text editor of luis", "Nvim"
+            )),
+            Document::new(format!("\nQuestion: {}\nAnswer: {}\n", "How old is Luis", "24")),
+            Document::new(format!("\nQuestion: {}\nAnswer: {}\n", "Where do luis live", "Peru")),
+            Document::new(format!("\nQuestion: {}\nAnswer: {}\n", "Whats his favorite food", "Pan con chicharron")),
+        ];
+
+        let opts = VecStoreOptions::new()
+            .with_name_space("botwaf") // TODO: namespace
+            .with_score_threshold(0.3 as f32); // TODO: score threshold
+        let _ = self.pgvec_store.add_documents(&documents, &opts);
+
+        // TODO: retriever & generate
+        let llm = OpenAI::default().with_model(OpenAIModel::Gpt35.to_string());
+        let prompt= message_formatter![
+                    fmt_message!(Message::new_system_message("You are a helpful assistant")),
+                    fmt_template!(HumanMessagePromptTemplate::new(template_jinja2!("
+Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
+
+{{context}}
+
+Question:{{question}}
+
+Helpful Answer:
+        ", "context","question")))
+                ];
+
+        let retriever = Retriever::new(
+            Arc::try_unwrap(self.pgvec_store.to_owned()).unwrap_or_else(|_| panic!("Failed to unwrap pgvec store.")),
+            5,
+        )
+        .with_options(opts);
+        let chain = ConversationalRetrieverChainBuilder::new()
+            .llm(llm)
+            .rephrase_question(true)
+            .return_source_documents(true)
+            .memory(WindowBufferMemory::new(100).into())
+            .retriever(retriever)
+            //If you want to use the default prompt remove the .prompt()
+            //Keep in mind if you want to change the prompt; this chain need the {{context}} variable
+            .prompt(prompt)
+            .build()
+            .expect("Error building ConversationalChain");
+
+        let input_variables = prompt_args! {
+            "question" => "Hi",
+            "input" => "Who is the writer of 20,000 Leagues Under the Sea, and what is my name?",
+            "history" => vec![
+                Message::new_human_message("My name is: Luis"),
+                Message::new_ai_message("Hi Luis"),
+            ],
+        };
+
+        let result = chain.invoke(input_variables).await;
+        if let Ok(result) = result {
+            println!("Result: {:?}", result);
         }
     }
 
+    #[allow(unused)]
     async fn fetch_events(&self, page_index: i64, page_size: i64) -> Vec<BotWafAccessEvent> {
         unimplemented!()
     }

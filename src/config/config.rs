@@ -182,6 +182,10 @@ pub struct EmbeddingProperties {
     pub api_uri: String,
     #[serde(rename = "api-key")]
     pub api_key: Option<String>,
+    #[serde(rename = "org-id")]
+    pub org_id: Option<String>,
+    #[serde(rename = "project-id")]
+    pub project_id: Option<String>,
     #[serde(rename = "model")]
     pub model: String,
 }
@@ -192,6 +196,10 @@ pub struct GenerateProperties {
     pub api_uri: String,
     #[serde(rename = "api-key")]
     pub api_key: Option<String>,
+    #[serde(rename = "org-id")]
+    pub org_id: Option<String>,
+    #[serde(rename = "project-id")]
+    pub project_id: Option<String>,
     #[serde(rename = "model")]
     pub model: String,
     #[serde(rename = "system-prompt")]
@@ -335,6 +343,8 @@ impl Default for EmbeddingProperties {
         EmbeddingProperties {
             api_uri: String::from("https://dashscope.aliyuncs.com/compatible-mode/v1"),
             api_key: None,
+            org_id: None,
+            project_id: None,
             model: String::from("bge-m3:latest"),
         }
     }
@@ -345,6 +355,8 @@ impl Default for GenerateProperties {
         GenerateProperties {
             api_uri: String::from("https://dashscope.aliyuncs.com/compatible-mode/v1"),
             api_key: None,
+            org_id: None,
+            project_id: None,
             model: String::from("qwen-plus"),
             system_prompt: String::from(
                 "You are a security expert.\n\
