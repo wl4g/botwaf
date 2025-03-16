@@ -55,9 +55,14 @@ botwaf:
   blocked-header-name: "X-Botwaf-Blocked"
   # Addition response modsec rule id when ModSecurity engine forbidded.
   allow-addition-modsec-info: true
-  analytics:
+  updaters:
     - name: "default"
       kind: "SIMPLE_LLM"
+      cron: "0 * * * * *"
+      channel-size: 200
+  verifiers:
+    - name: "default"
+      kind: "SIMPLE_EXECUTE"
       cron: "0 * * * * *"
       channel-size: 200
   # see:https://platform.openai.com/docs/guides/completions

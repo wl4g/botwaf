@@ -43,6 +43,8 @@
             },
             "args": [
                 "serve"
+                // "updater"
+                // "verifier"
             ],
             "cwd": "${workspaceFolder}"
         }

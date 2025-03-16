@@ -80,8 +80,10 @@ pub struct BotwafProperties {
     pub allow_addition_modsec_info: bool,
     #[serde(rename = "static-rules")]
     pub static_rules: Vec<StaticRule>,
-    #[serde(rename = "analytics")]
-    pub analytics: Vec<AnalyticsProperties>,
+    #[serde(rename = "updaters")]
+    pub updaters: Vec<UpdaterProperties>,
+    #[serde(rename = "verifiers")]
+    pub verifiers: Vec<VerifierProperties>,
     #[serde(rename = "llm", default = "LlmProperties::default")]
     pub llm: LlmProperties,
     #[serde(rename = "forward", default = "ForwardProperties::default")]
@@ -140,7 +142,19 @@ pub struct StaticRule {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AnalyticsProperties {
+pub struct UpdaterProperties {
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "kind")]
+    pub kind: String,
+    #[serde(rename = "cron")]
+    pub cron: String,
+    #[serde(rename = "channel-size")]
+    pub channel_size: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct VerifierProperties {
     #[serde(rename = "name")]
     pub name: String,
     #[serde(rename = "kind")]
@@ -255,17 +269,28 @@ impl Default for BotwafProperties {
             allow_addition_modsec_info: true,
             static_rules: vec![],
             llm: LlmProperties::default(),
-            analytics: Vec::new(),
+            updaters: Vec::new(),
+            verifiers: Vec::new(),
             forward: ForwardProperties::default(),
         }
     }
 }
 
-impl Default for AnalyticsProperties {
+impl Default for UpdaterProperties {
     fn default() -> Self {
-        AnalyticsProperties {
+        UpdaterProperties {
             name: String::from("default"),
             kind: String::from("SIMPLE_LLM"),
+            cron: String::from("0/30 * * * * * *"), // Every half minute
+            channel_size: 200,
+        }
+    }
+}
+impl Default for VerifierProperties {
+    fn default() -> Self {
+        VerifierProperties {
+            name: String::from("default"),
+            kind: String::from("SIMPLE_EXECUTE"),
             cron: String::from("0/30 * * * * * *"), // Every half minute
             channel_size: 200,
         }

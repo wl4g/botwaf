@@ -18,10 +18,6 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-pub mod cache;
-pub mod config;
-pub mod logging;
-pub mod server;
-pub mod types;
-pub mod updater;
 pub mod verifier;
+pub mod verifier_handler;
+pub mod verifier_handler_execution;

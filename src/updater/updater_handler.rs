@@ -25,29 +25,29 @@ use async_trait::async_trait;
 use lazy_static::lazy_static;
 use tokio::sync::Mutex;
 
-use crate::{config::config, updater::analytic_handler_llm::SimpleLlmAnalyticsHandler};
+use crate::{config::config, updater::updater_handler_llm::SimpleLLMUpdaterHandler};
 
 #[async_trait]
-pub trait IAnalyticsHandler: Send + Sync {
+pub trait IUpdaterHandler: Send + Sync {
     async fn start(&self);
 }
 
 lazy_static! {
-    static ref SINGLE_INSTANCE: Mutex<AnalyticsHandlerFactory> = Mutex::new(AnalyticsHandlerFactory::new());
+    static ref SINGLE_INSTANCE: Mutex<UpdaterHandlerFactory> = Mutex::new(UpdaterHandlerFactory::new());
 }
 
-pub struct AnalyticsHandlerFactory {
-    pub implementations: HashMap<String, Arc<dyn IAnalyticsHandler + Send + Sync>>,
+pub struct UpdaterHandlerFactory {
+    pub implementations: HashMap<String, Arc<dyn IUpdaterHandler + Send + Sync>>,
 }
 
-impl AnalyticsHandlerFactory {
+impl UpdaterHandlerFactory {
     fn new() -> Self {
-        AnalyticsHandlerFactory {
+        UpdaterHandlerFactory {
             implementations: HashMap::new(),
         }
     }
 
-    pub fn get() -> &'static Mutex<AnalyticsHandlerFactory> {
+    pub fn get() -> &'static Mutex<UpdaterHandlerFactory> {
         &SINGLE_INSTANCE
     }
 
@@ -61,27 +61,27 @@ impl AnalyticsHandlerFactory {
         //     });
 
         // Register all handlers
-        for config in &config::CFG.botwaf.analytics {
-            if config.kind == SimpleLlmAnalyticsHandler::KIND {
+        for config in &config::CFG.botwaf.updaters {
+            if config.kind == SimpleLLMUpdaterHandler::KIND {
                 tracing::info!("Initializing implementation handler: {}", config.name);
-                let handler = SimpleLlmAnalyticsHandler::init(config).await;
-                if let Err(e) = AnalyticsHandlerFactory::get()
+                let handler = SimpleLLMUpdaterHandler::init(config).await;
+                if let Err(e) = UpdaterHandlerFactory::get()
                     .lock()
                     .await
                     .register(config.name.to_owned(), handler.clone())
                     .await
                 {
-                    tracing::error!("Failed to register LLM analytics handler: {}", e);
+                    tracing::error!("Failed to register LLM updater handler: {}", e);
                 }
-                tracing::info!("Registered implementation handler: {}", config.name);
+                tracing::info!("Registered implementation updater handler: {}", config.name);
             }
         }
 
         // Start up all handlers
-        for config in &config::CFG.botwaf.analytics {
+        for config in &config::CFG.botwaf.updaters {
             match Self::get().lock().await.get_implementation(config.name.to_owned()).await {
                 Ok(handler) => {
-                    tracing::info!("Starting implementation handler: {}", config.name);
+                    tracing::info!("Starting implementation updater handler: {}", config.name);
                     handler.start().await;
                 }
                 Err(_) => {}
@@ -89,17 +89,17 @@ impl AnalyticsHandlerFactory {
         }
     }
 
-    pub async fn register(&mut self, name: String, handler: Arc<dyn IAnalyticsHandler + Send + Sync>) -> Result<(), Error> {
+    pub async fn register(&mut self, name: String, handler: Arc<dyn IUpdaterHandler + Send + Sync>) -> Result<(), Error> {
         // Check if the name already exists
         if self.implementations.contains_key(&name) {
-            let errmsg = format!("Handler Factory: Name '{}' already exists", name);
+            let errmsg = format!("Updater handler Factory: Name '{}' already exists", name);
             return Err(Error::msg(errmsg));
         }
         self.implementations.insert(name, handler);
         Ok(())
     }
 
-    pub async fn get_implementation(&self, name: String) -> Result<Arc<dyn IAnalyticsHandler + Send + Sync>, Error> {
+    pub async fn get_implementation(&self, name: String) -> Result<Arc<dyn IUpdaterHandler + Send + Sync>, Error> {
         if let Some(implementation) = self.implementations.get(&name) {
             Ok(implementation.clone())
         } else {

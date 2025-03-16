@@ -25,7 +25,6 @@ tokio = { version = "1.43.0", features = ["full"] }
 tokio-cron-scheduler = { version = "0.13.0" }
 tower = "0.5.2"
 config = "0.14.0"
-openai = "1.0.0"
 chrono = "0.4.40"
 tracing = "0.1.41"
 async-trait = "0.1.87"
@@ -38,6 +37,10 @@ serde_json = "1.0.140"
 regex = "1.11.1"
 moka = { version = "0.12.10", features = ["sync", "future"] }
 redis = { version = "0.25.4", features = ["tokio-comp", "cluster-async"] }
+sqlx = { version = "0.8.3", features = ["sqlite", "postgres"]}
+openai = "1.0.0"
+langchain-rust = { version = "4.6.0", features = ["sqlite", "postgres"] }
+pgvector = { version = "0.4", features = ["postgres"] }
 
 [build-dependencies]
 chrono = { version = "0.4.38", default-features = false, features = ["clock"] }

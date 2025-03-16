@@ -18,6 +18,6 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-pub mod analytic_handler;
-pub mod analytic_handler_llm;
 pub mod updater;
+pub mod updater_handler;
+pub mod updater_handler_llm;

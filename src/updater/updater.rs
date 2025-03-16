@@ -3,7 +3,7 @@ use crate::{
     logging,
 };
 
-use super::analytic_handler::AnalyticsHandlerFactory;
+use super::updater_handler::UpdaterHandlerFactory;
 
 pub async fn start() -> Result<(), Box<dyn std::error::Error>> {
     // http://www.network-science.de/ascii/#larry3d,graffiti,basic,drpepper,rounded,roman
@@ -27,7 +27,7 @@ pub async fn start() -> Result<(), Box<dyn std::error::Error>> {
 
     logging::init_components().await;
 
-    AnalyticsHandlerFactory::start().await;
+    UpdaterHandlerFactory::start().await;
 
     Ok(())
 }

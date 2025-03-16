@@ -18,7 +18,7 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use crate::config::config::{self, AnalyticsProperties};
+use crate::config::config::{self, UpdaterProperties};
 use async_trait::async_trait;
 use openai::{
     chat::{ChatCompletion, ChatCompletionMessage, ChatCompletionMessageRole},
@@ -27,19 +27,19 @@ use openai::{
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use super::analytic_handler::{BotWafAccessEvent, IAnalyticsHandler};
+use super::updater_handler::{BotWafAccessEvent, IUpdaterHandler};
 
 #[derive(Clone)]
-pub struct SimpleLlmAnalyticsHandler {
-    config: AnalyticsProperties,
+pub struct SimpleLLMUpdaterHandler {
+    config: UpdaterProperties,
     scheduler: Arc<JobScheduler>,
     credentials: Arc<Credentials>,
 }
 
-impl SimpleLlmAnalyticsHandler {
+impl SimpleLLMUpdaterHandler {
     pub const KIND: &'static str = "SIMPLE_LLM";
 
-    pub async fn init(config: &AnalyticsProperties) -> Arc<Self> {
+    pub async fn init(config: &UpdaterProperties) -> Arc<Self> {
         Arc::new(Self {
             config: config.to_owned(),
             scheduler: Arc::new(JobScheduler::new_with_channel_size(config.channel_size).await.unwrap()),
@@ -50,8 +50,8 @@ impl SimpleLlmAnalyticsHandler {
         })
     }
 
-    pub(super) async fn analyze(&self) {
-        tracing::info!("Scanning all access events ...");
+    pub(super) async fn update(&self) {
+        tracing::info!("Simple LLM updating ...");
 
         let credentials = self.credentials.clone();
 
@@ -93,7 +93,7 @@ impl SimpleLlmAnalyticsHandler {
 }
 
 #[async_trait]
-impl IAnalyticsHandler for SimpleLlmAnalyticsHandler {
+impl IUpdaterHandler for SimpleLLMUpdaterHandler {
     // start async thread job to re-scaning near real-time recorded access events.
     async fn start(&self) {
         let this = self.clone();
@@ -102,11 +102,7 @@ impl IAnalyticsHandler for SimpleLlmAnalyticsHandler {
         let cron = match Job::new_async(self.config.cron.as_str(), |_uuid, _lock| Box::pin(async {})) {
             Ok(_) => self.config.cron.as_str(),
             Err(e) => {
-                tracing::warn!(
-                    "Invalid cron expression '{}': {}. Using default '0/30 * * * * *'",
-                    self.config.cron,
-                    e
-                );
+                tracing::warn!("Invalid cron expression '{}': {}. Using default '0/30 * * * * *'", self.config.cron, e);
                 "0/30 * * * * *" // every half minute
             }
         };
@@ -116,7 +112,7 @@ impl IAnalyticsHandler for SimpleLlmAnalyticsHandler {
             let that = this.clone();
             Box::pin(async move {
                 tracing::info!("{:?} Hi I ran", chrono::Utc::now());
-                that.analyze().await;
+                that.update().await;
             })
         })
         .unwrap();
