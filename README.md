@@ -4,13 +4,30 @@
 
 ## Prerequisites
 
-- Rust 1.85+
+### Rust 1.85+
 
 ```bash
 rustup toolchain install stable
 ```
 
-- [Install rustfmt VsCode plugin](https://marketplace.visualstudio.com/items?itemName=statiolake.vscode-rustfmt)
+### [Install rustfmt VsCode plugin](https://marketplace.visualstudio.com/items?itemName=statiolake.vscode-rustfmt)
+
+### Run models with ollama
+
+- Run embeddding model
+
+```bash
+export OLLAMA_HOST='0.0.0.0'
+nohup ollama start >/dev/null &
+```
+
+- Verify embeddding model
+
+```bash
+curl -X POST http://localhost:11434/api/embed \
+-H "Content-Type: application/json" \
+-d '{"model": "bge-m3:latest", "input": "Hello, world!"}'
+```
 
 ## Quick Start
 
