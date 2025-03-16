@@ -109,6 +109,11 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
         .process_uri(&incoming.path, &incoming.method, "1.1")
         .expect("Error processing URI");
     // Process the request headers with ModSecurity engine.
+    for (key, value) in incoming.headers.iter() {
+        transaction
+            .add_request_header(key, value.as_ref().unwrap_or(&"".to_string()))
+            .expect("Error add request header.");
+    }
     transaction.process_request_headers().expect("Error processing request headers");
     // Process the request body with ModSecurity engine.
     let req_body = incoming.body.to_owned().unwrap_or_default().to_vec();
