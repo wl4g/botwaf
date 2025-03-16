@@ -22,6 +22,7 @@ pub mod cache;
 pub mod config;
 pub mod logging;
 pub mod server;
+pub mod standalone;
 pub mod types;
 pub mod updater;
 pub mod verifier;

@@ -35,21 +35,21 @@ pub trait IVerifierHandler: Send + Sync {
 }
 
 lazy_static! {
-    static ref SINGLE_INSTANCE: Mutex<VerifierHandlerFactory> = Mutex::new(VerifierHandlerFactory::new());
+    static ref SINGLE_INSTANCE: Mutex<VerifierHandlerManager> = Mutex::new(VerifierHandlerManager::new());
 }
 
-pub struct VerifierHandlerFactory {
+pub struct VerifierHandlerManager {
     pub implementations: HashMap<String, Arc<dyn IVerifierHandler + Send + Sync>>,
 }
 
-impl VerifierHandlerFactory {
+impl VerifierHandlerManager {
     fn new() -> Self {
-        VerifierHandlerFactory {
+        VerifierHandlerManager {
             implementations: HashMap::new(),
         }
     }
 
-    pub fn get() -> &'static Mutex<VerifierHandlerFactory> {
+    pub fn get() -> &'static Mutex<VerifierHandlerManager> {
         &SINGLE_INSTANCE
     }
 
@@ -59,7 +59,7 @@ impl VerifierHandlerFactory {
             if config.kind == SimpleExecuteBasedHandler::KIND {
                 tracing::info!("Initializing implementation verifier handler: {}", config.name);
                 let handler = SimpleExecuteBasedHandler::init(config).await;
-                if let Err(e) = VerifierHandlerFactory::get()
+                if let Err(e) = VerifierHandlerManager::get()
                     .lock()
                     .await
                     .register(config.name.to_owned(), handler.clone())

@@ -1,9 +1,14 @@
 use crate::{
-    config::config::{GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
+    config::{
+        config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
+        constant::URI_HEALTHZ,
+    },
     logging,
+    server::server::BotWafState,
 };
-
-use super::updater_handler::UpdaterHandlerFactory;
+use anyhow::Error;
+use axum::Router;
+use tokio::net::TcpListener;
 
 pub async fn start() -> Result<(), Box<dyn std::error::Error>> {
     // http://www.network-science.de/ascii/#larry3d,graffiti,basic,drpepper,rounded,roman
@@ -27,7 +32,38 @@ pub async fn start() -> Result<(), Box<dyn std::error::Error>> {
 
     logging::init_components().await;
 
-    UpdaterHandlerFactory::start().await;
+    let botwaf_state = BotWafState::new();
+    let app_router = build_app_router(botwaf_state).await?;
+
+    let bind_addr = config::CFG.server.host.clone() + ":" + &config::CFG.server.port.to_string();
+    tracing::info!("Starting Botwaf Updater server on {}", bind_addr);
+
+    let listener = match TcpListener::bind(&bind_addr).await {
+        std::result::Result::Ok(l) => {
+            tracing::info!("Botwaf Updater server is ready on {}", bind_addr);
+            l
+        }
+        Err(e) => {
+            tracing::error!("Failed to bind to {}: {}", bind_addr, e);
+            panic!("Failed to bind to {}: {}", bind_addr, e);
+        }
+    };
+
+    match axum::serve(listener, app_router.into_make_service()).await {
+        std::result::Result::Ok(_) => {
+            tracing::info!("Botwaf Updater Server shut down gracefully");
+        }
+        Err(e) => {
+            tracing::error!("Error running Updater server: {}", e);
+            panic!("Error starting Updater Server: {}", e);
+        }
+    }
 
     Ok(())
+}
+
+pub async fn build_app_router(_: BotWafState) -> Result<Router, Error> {
+    let app_router = Router::new().route(URI_HEALTHZ, axum::routing::get(|| async { "BotWaf Updater Server is Running!" }));
+
+    Ok(app_router)
 }

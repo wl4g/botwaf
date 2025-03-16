@@ -20,7 +20,10 @@
 
 use crate::{
     cache::redis::StringRedisCache,
-    config::config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
+    config::{
+        config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
+        constant::{EXCLUDED_PATHS, URI_HEALTHZ},
+    },
     logging,
     server::{
         forward_handler::IForwardHandler, forward_handler_http::HttpForwardHandler, ipfilter_handler::IPFilterHandler,
@@ -28,6 +31,7 @@ use crate::{
     },
     types::server::HttpIncomingRequest,
 };
+use anyhow::{Error, Ok};
 use axum::{
     body::Body,
     extract::State,
@@ -42,13 +46,8 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 
-// Default router URIs paths to excluding.
-pub const URI_STATIC: &str = "/static/*file";
-pub const URI_HEALTHZ: &str = "/healthz";
-pub const EXCLUDED_PATHS: [&str; 2] = [URI_STATIC, URI_HEALTHZ];
-
 #[derive(Clone)]
-struct BotWafState {
+pub struct BotWafState {
     modsec_instance: Arc<ModSecurity>,
     modsec_rules: Arc<Rules>,
     #[allow(unused)]
@@ -58,7 +57,7 @@ struct BotWafState {
 }
 
 impl BotWafState {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let ms = Arc::new(ModSecurity::default());
         let mut rules = Rules::new();
         for rule in config::CFG.botwaf.static_rules.clone() {
@@ -158,7 +157,7 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
 
     // Forwarding request to the upstream servers.
     match state.forward_handler.http_forward(incoming.to_owned()).await {
-        Ok(response) => {
+        std::result::Result::Ok(response) => {
             tracing::info!("[BotWaf] [Forwarded] - {}", &incoming.path);
             response
         }
@@ -169,7 +168,7 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
     }
 }
 
-pub async fn start() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn start() -> Result<(), Error> {
     // http://www.network-science.de/ascii/#larry3d,graffiti,basic,drpepper,rounded,roman
     let ascii_name = r#"
     ____            __    __      __               ___      ____                                     
@@ -190,15 +189,13 @@ pub async fn start() -> Result<(), Box<dyn std::error::Error>> {
     logging::init_components().await;
 
     let botwaf_state = BotWafState::new();
-
-    let app_routes = Router::new()
-        .route(URI_HEALTHZ, axum::routing::get(|| async { "BotWaf is Running!" }))
-        .layer(ServiceBuilder::new().layer(axum::middleware::from_fn_with_state(botwaf_state, botwaf_middleware)));
+    let app_router = build_app_router(botwaf_state).await?;
 
     let bind_addr = config::CFG.server.host.clone() + ":" + &config::CFG.server.port.to_string();
     tracing::info!("Starting Botwaf web server on {}", bind_addr);
+
     let listener = match TcpListener::bind(&bind_addr).await {
-        Ok(l) => {
+        std::result::Result::Ok(l) => {
             tracing::info!("Botwaf Web server is ready on {}", bind_addr);
             l
         }
@@ -207,8 +204,9 @@ pub async fn start() -> Result<(), Box<dyn std::error::Error>> {
             panic!("Failed to bind to {}: {}", bind_addr, e);
         }
     };
-    match axum::serve(listener, app_routes.into_make_service()).await {
-        Ok(_) => {
+
+    match axum::serve(listener, app_router.into_make_service()).await {
+        std::result::Result::Ok(_) => {
             tracing::info!("Botwaf Web server shut down gracefully");
         }
         Err(e) => {
@@ -218,4 +216,12 @@ pub async fn start() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+pub async fn build_app_router(state: BotWafState) -> Result<Router, Error> {
+    let app_router = Router::new()
+        .route(URI_HEALTHZ, axum::routing::get(|| async { "BotWaf Web Server is Running!" }))
+        .layer(ServiceBuilder::new().layer(axum::middleware::from_fn_with_state(state, botwaf_middleware)));
+
+    Ok(app_router)
 }

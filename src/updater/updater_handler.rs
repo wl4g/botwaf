@@ -33,21 +33,21 @@ pub trait IUpdaterHandler: Send + Sync {
 }
 
 lazy_static! {
-    static ref SINGLE_INSTANCE: Mutex<UpdaterHandlerFactory> = Mutex::new(UpdaterHandlerFactory::new());
+    static ref SINGLE_INSTANCE: Mutex<UpdaterHandlerManager> = Mutex::new(UpdaterHandlerManager::new());
 }
 
-pub struct UpdaterHandlerFactory {
+pub struct UpdaterHandlerManager {
     pub implementations: HashMap<String, Arc<dyn IUpdaterHandler + Send + Sync>>,
 }
 
-impl UpdaterHandlerFactory {
+impl UpdaterHandlerManager {
     fn new() -> Self {
-        UpdaterHandlerFactory {
+        UpdaterHandlerManager {
             implementations: HashMap::new(),
         }
     }
 
-    pub fn get() -> &'static Mutex<UpdaterHandlerFactory> {
+    pub fn get() -> &'static Mutex<UpdaterHandlerManager> {
         &SINGLE_INSTANCE
     }
 
@@ -65,7 +65,7 @@ impl UpdaterHandlerFactory {
             if config.kind == SimpleLLMUpdaterHandler::KIND {
                 tracing::info!("Initializing implementation handler: {}", config.name);
                 let handler = SimpleLLMUpdaterHandler::init(config).await;
-                if let Err(e) = UpdaterHandlerFactory::get()
+                if let Err(e) = UpdaterHandlerManager::get()
                     .lock()
                     .await
                     .register(config.name.to_owned(), handler.clone())

@@ -1,4 +1,4 @@
-use botwaf::{config::config, server::server, updater::updater, verifier::verifier};
+use botwaf::{config::config, server::server, standalone::standalone, updater::updater, verifier::verifier};
 use clap::{Arg, Command};
 
 #[tokio::main]
@@ -26,10 +26,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match matches.subcommand() {
         Some((name, _)) => match name {
             "standalone" => {
-                // TODO When server started blocking exeuction problem.
-                server::start().await?;
-                updater::start().await?;
-                verifier::start().await?;
+                standalone::start().await?;
             }
             "serve" => {
                 server::start().await?;
