@@ -1,6 +1,6 @@
 # Botwaf
 
-> Botwaf - A Mini Open Source AI WAF written in Rust.
+> Botwaf - A Mini Open Source AI Bot WAF written in Rust.
 
 ## Prerequisites
 
