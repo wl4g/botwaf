@@ -40,19 +40,19 @@ use langchain_rust::{
     vectorstore::{pgvector::StoreBuilder, Retriever, VecStoreOptions, VectorStore},
 };
 
-use super::updater_handler::{BotWafAccessEvent, IUpdaterHandler};
+use super::updater_base::{BotWafAccessEvent, IBotwafUpdater};
 use crate::config::config::{self, UpdaterProperties};
 
 #[derive(Clone)]
-pub struct SimpleLLMUpdaterHandler {
+pub struct SimpleLLMUpdater {
     config: UpdaterProperties,
     scheduler: Arc<JobScheduler>,
     pgvec_store: Arc<Box<dyn VectorStore>>,
     openai_llm: OpenAI<OpenAIConfig>,
 }
 
-impl SimpleLLMUpdaterHandler {
-    pub const KIND: &'static str = "SIMPLE_LLM";
+impl SimpleLLMUpdater {
+    pub const KIND: &'static str = "SIMPLE_LANGCHAIN";
 
     pub async fn init(config: &UpdaterProperties) -> Arc<Self> {
         // Create the embedding openai config.
@@ -169,16 +169,22 @@ impl SimpleLLMUpdaterHandler {
         ];
 
         // Normal requests (positive sample)
-        let normal_samples = vec![
-            Document::new("192.168.1.3 - - [10/Feb/2024:14:07:09 +0000] \"GET /index.php HTTP/1.1\" 200 1538").with_metadata(HashMap::from([
-                ("key1".to_string(), "value1".into()),
-                ("key2".to_string(), "value2".into()),
-            ])),
-        ];
+        let normal_samples =
+            vec![
+                Document::new("192.168.1.3 - - [10/Feb/2024:14:07:09 +0000] \"GET /index.php HTTP/1.1\" 200 1538")
+                    .with_metadata(HashMap::from([
+                        ("key1".to_string(), "value1".into()),
+                        ("key2".to_string(), "value2".into()),
+                    ])),
+            ];
 
         // 存储到不同的命名空间
-        let attack_opts = VecStoreOptions::new().with_name_space("malicious").with_score_threshold(0.5 as f32); // TODO: score threshold;
-        let normal_opts = VecStoreOptions::new().with_name_space("normal").with_score_threshold(0.5 as f32); // TODO: score threshold
+        let attack_opts = VecStoreOptions::new()
+            .with_name_space("malicious")
+            .with_score_threshold(0.5 as f32); // TODO: score threshold;
+        let normal_opts = VecStoreOptions::new()
+            .with_name_space("normal")
+            .with_score_threshold(0.5 as f32); // TODO: score threshold
 
         let _ = self.pgvec_store.add_documents(&attack_samples, &attack_opts).await;
         let _ = self.pgvec_store.add_documents(&normal_samples, &normal_opts).await;
@@ -190,7 +196,10 @@ impl SimpleLLMUpdaterHandler {
             )),
             Document::new(format!("\nQuestion: {}\nAnswer: {}\n", "How old is Luis", "24")),
             Document::new(format!("\nQuestion: {}\nAnswer: {}\n", "Where do luis live", "Peru")),
-            Document::new(format!("\nQuestion: {}\nAnswer: {}\n", "Whats his favorite food", "Pan con chicharron")),
+            Document::new(format!(
+                "\nQuestion: {}\nAnswer: {}\n",
+                "Whats his favorite food", "Pan con chicharron"
+            )),
         ];
 
         let opts = VecStoreOptions::new()
@@ -251,7 +260,7 @@ Helpful Answer:
 }
 
 #[async_trait]
-impl IUpdaterHandler for SimpleLLMUpdaterHandler {
+impl IBotwafUpdater for SimpleLLMUpdater {
     // start async thread job to re-scaning near real-time recorded access events.
     async fn start(&self) {
         let this = self.clone();
@@ -260,7 +269,11 @@ impl IUpdaterHandler for SimpleLLMUpdaterHandler {
         let cron = match Job::new_async(self.config.cron.as_str(), |_uuid, _lock| Box::pin(async {})) {
             Ok(_) => self.config.cron.as_str(),
             Err(e) => {
-                tracing::warn!("Invalid cron expression '{}': {}. Using default '0/30 * * * * *'", self.config.cron, e);
+                tracing::warn!(
+                    "Invalid cron expression '{}': {}. Using default '0/30 * * * * *'",
+                    self.config.cron,
+                    e
+                );
                 "0/30 * * * * *" // every half minute
             }
         };

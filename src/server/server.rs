@@ -25,10 +25,11 @@ use crate::{
         config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
         constant::{EXCLUDED_PATHS, URI_HEALTHZ},
     },
+    handler::{llm_handler::ILLMHandler, llm_handler_langchain::LangchainLLMHandler},
     logging,
     server::{
-        forward_handler::IForwardHandler, forward_handler_http::HttpForwardHandler, ipfilter_handler::IPFilterHandler,
-        ipfilter_handler_redis::RedisIPFilterHandler,
+        forwarder::IForwarder, forwarder_http::HttpForwardHandler, ipfilter::IPFilter,
+        ipfilter_redis::RedisIPFilterHandler,
     },
     types::server::HttpIncomingRequest,
 };
@@ -49,17 +50,19 @@ use tower::ServiceBuilder;
 
 #[derive(Clone)]
 pub struct BotWafState {
-    modsec_instance: Arc<ModSecurity>,
-    modsec_rules: Arc<Rules>,
+    pub modsec_engine: Arc<ModSecurity>,
+    pub modsec_rules: Arc<Rules>,
     #[allow(unused)]
-    redis_cache: Arc<StringRedisCache>,
-    ipfilter_handler: Arc<dyn IPFilterHandler + Send + Sync>,
-    forward_handler: Arc<dyn IForwardHandler + Send + Sync>,
+    pub redis_cache: Arc<StringRedisCache>,
+    pub ipfilter: Arc<dyn IPFilter + Send + Sync>,
+    pub forwarder: Arc<dyn IForwarder + Send + Sync>,
+    pub llm_handler: Arc<dyn ILLMHandler + Send + Sync>,
 }
 
 impl BotWafState {
-    pub fn new() -> Self {
-        let ms = Arc::new(ModSecurity::default());
+    pub async fn new() -> Self {
+        let modsec_engine = Arc::new(ModSecurity::default());
+
         let mut rules = Rules::new();
         for rule in config::CFG.botwaf.static_rules.clone() {
             if rule.kind == "RAW" {
@@ -72,14 +75,17 @@ impl BotWafState {
                 rules.add_plain(rule.value.as_str()).expect("Failed to add rules");
             }
         }
-        let rules = Arc::new(rules);
+        let modsec_rules = Arc::new(rules);
+
         let redis_cache = Arc::new(StringRedisCache::new(&config::CFG.cache.redis));
+
         BotWafState {
-            modsec_instance: ms,
-            modsec_rules: rules,
+            modsec_engine,
+            modsec_rules,
             redis_cache: redis_cache.to_owned(),
-            ipfilter_handler: RedisIPFilterHandler::new(redis_cache, config::CFG.botwaf.blocked_header_name.clone()),
-            forward_handler: Arc::new(HttpForwardHandler::new()),
+            ipfilter: RedisIPFilterHandler::new(redis_cache, config::CFG.botwaf.blocked_header_name.clone()),
+            forwarder: Arc::new(HttpForwardHandler::new()),
+            llm_handler: Arc::new(LangchainLLMHandler::new().await),
         }
     }
 }
@@ -96,12 +102,7 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
     let incoming = HttpIncomingRequest::new(req).await;
 
     // Check if the request client IP address is blocked.
-    if state
-        .ipfilter_handler
-        .is_blocked(incoming.to_owned())
-        .await
-        .unwrap_or(false)
-    {
+    if state.ipfilter.is_blocked(incoming.to_owned()).await.unwrap_or(false) {
         let code = StatusCode::from_u16(config::CFG.botwaf.blocked_status_code.unwrap()).unwrap();
         return Response::builder()
             .status(code)
@@ -111,7 +112,7 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
 
     // Create a ModSecurity engine transaction with rules.
     let mut transaction = state
-        .modsec_instance
+        .modsec_engine
         .transaction_builder()
         .with_rules(&state.modsec_rules)
         .build()
@@ -175,7 +176,7 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
     }
 
     // Forwarding request to the upstream servers.
-    match state.forward_handler.http_forward(incoming.to_owned()).await {
+    match state.forwarder.http_forward(incoming.to_owned()).await {
         std::result::Result::Ok(response) => {
             tracing::info!("[BotWaf] [Forwarded] - {}", &incoming.path);
             response
@@ -212,7 +213,7 @@ ____
 
     logging::init_components().await;
 
-    let botwaf_state = BotWafState::new();
+    let botwaf_state = BotWafState::new().await;
     let app_router = build_app_router(botwaf_state).await?;
 
     let bind_addr = config::CFG.server.host.clone() + ":" + &config::CFG.server.port.to_string();

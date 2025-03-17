@@ -18,26 +18,20 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use crate::types::knowledge::KnowledgeUploadFile;
+use std::sync::Arc;
 
-use super::server::BotWafState;
-use axum::{extract::State, response::IntoResponse, routing::post, Json, Router};
-use hyper::StatusCode;
+use anyhow::Error;
 
-pub fn init() -> Router<BotWafState> {
-    Router::new().route("/modules/knowledge/upload", post(handle_knowledge_upload))
-}
+use crate::types::server::HttpIncomingRequest;
 
-#[utoipa::path(
-    post,
-    path = "/modules/knowledge/upload",
-    request_body = KnowledgeUploadFile,
-    responses((status = 200, description = "Upload Knowledge.", body = KnowledgeUploadFile)),
-    tag = "Knowledge"
-)]
-async fn handle_knowledge_upload(
-    State(state): State<BotWafState>,
-    Json(param): Json<KnowledgeUploadFile>,
-) -> impl IntoResponse {
-    StatusCode::INTERNAL_SERVER_ERROR
+#[async_trait::async_trait]
+pub trait IPFilter {
+    /// Checks if an IP address is in the blacklist
+    async fn is_blocked(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error>;
+
+    /// Adds an IP address to the blacklist
+    async fn block_ip(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error>;
+
+    /// Removes an IP address from the blacklist
+    async fn unblock_ip(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error>;
 }

@@ -18,9 +18,9 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-pub mod forward_handler;
-pub mod forward_handler_http;
-pub mod ipfilter_handler;
-pub mod ipfilter_handler_redis;
-pub mod knowledge_handler;
+pub mod forwarder;
+pub mod forwarder_http;
+pub mod ipfilter;
+pub mod ipfilter_redis;
+pub mod knowledge_router;
 pub mod server;

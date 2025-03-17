@@ -32,8 +32,8 @@ use crate::{
     },
     logging,
     server::server::BotWafState,
-    updater::updater_handler::UpdaterHandlerManager,
-    verifier::verifier_handler::VerifierHandlerManager,
+    updater::updater_base::BotwafUpdaterManager,
+    verifier::verifier_base::BotwafVerifierManager,
 };
 
 pub async fn start() -> Result<(), Error> {
@@ -61,10 +61,10 @@ ____    __                        __            ___
 
     logging::init_components().await;
 
-    UpdaterHandlerManager::start().await;
-    VerifierHandlerManager::start().await;
+    BotwafUpdaterManager::start().await;
+    BotwafVerifierManager::start().await;
 
-    let botwaf_state = BotWafState::new();
+    let botwaf_state = BotWafState::new().await;
     let app_router = build_app_router(botwaf_state).await?;
 
     let bind_addr = config::CFG.server.host.clone() + ":" + &config::CFG.server.port.to_string();

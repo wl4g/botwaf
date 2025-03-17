@@ -30,9 +30,7 @@ pub struct HttpThreatSampleRecord {
     metadata: serde_json::Value,
 }
 
-#[derive(
-    Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema,
-)]
+#[derive(Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub enum KnowledgeStatus {
     RECEIVED,
     //QUEUED,
@@ -41,10 +39,8 @@ pub enum KnowledgeStatus {
     FAILED,
 }
 
-#[derive(
-    Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema,
-)]
-pub struct KnowledgeUploadFile {
+#[derive(Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
+pub struct KnowledgeUploadInfo {
     pub id: String,
     pub name: String,
     pub labels: HashMap<String, String>,
@@ -54,14 +50,14 @@ pub struct KnowledgeUploadFile {
     pub create_by: Option<String>,
 }
 
-impl KnowledgeUploadFile {
+impl KnowledgeUploadInfo {
     pub async fn new(
         name: String,
         labels: HashMap<String, String>,
         positive: bool,
         create_by: Option<String>,
     ) -> Arc<Self> {
-        Arc::new(KnowledgeUploadFile {
+        Arc::new(KnowledgeUploadInfo {
             id: Uuid::new_v4().to_string().replace("-", ""),
             name,
             labels,

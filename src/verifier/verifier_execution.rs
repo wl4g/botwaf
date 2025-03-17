@@ -23,15 +23,15 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use super::verifier_handler::IVerifierHandler;
+use super::verifier_base::IBotwafVerifier;
 
 #[derive(Clone)]
-pub struct SimpleExecuteBasedHandler {
+pub struct SimpleExecuteBasedVerifier {
     config: VerifierProperties,
     scheduler: Arc<JobScheduler>,
 }
 
-impl SimpleExecuteBasedHandler {
+impl SimpleExecuteBasedVerifier {
     pub const KIND: &'static str = "SIMPLE_EXECUTE";
 
     pub async fn init(config: &VerifierProperties) -> Arc<Self> {
@@ -48,7 +48,7 @@ impl SimpleExecuteBasedHandler {
 }
 
 #[async_trait]
-impl IVerifierHandler for SimpleExecuteBasedHandler {
+impl IBotwafVerifier for SimpleExecuteBasedVerifier {
     // start async thread job to re-scaning near real-time recorded access events.
     async fn start(&self) {
         let this = self.clone();
@@ -57,7 +57,11 @@ impl IVerifierHandler for SimpleExecuteBasedHandler {
         let cron = match Job::new_async(self.config.cron.as_str(), |_uuid, _lock| Box::pin(async {})) {
             Ok(_) => self.config.cron.as_str(),
             Err(e) => {
-                tracing::warn!("Invalid cron expression '{}': {}. Using default '0/30 * * * * *'", self.config.cron, e);
+                tracing::warn!(
+                    "Invalid cron expression '{}': {}. Using default '0/30 * * * * *'",
+                    self.config.cron,
+                    e
+                );
                 "0/30 * * * * *" // every half minute
             }
         };

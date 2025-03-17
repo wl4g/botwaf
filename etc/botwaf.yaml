@@ -72,7 +72,7 @@ botwaf:
   allow-addition-modsec-info: true
   updaters:
     - name: "default"
-      kind: "SIMPLE_LLM"
+      kind: "SIMPLE_LANGCHAIN"
       cron: "0 * * * * *"
       channel-size: 200
   verifiers:

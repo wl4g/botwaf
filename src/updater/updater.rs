@@ -8,7 +8,7 @@ use crate::{
     },
     logging,
     server::server::BotWafState,
-    updater::updater_handler::UpdaterHandlerManager,
+    updater::updater_base::BotwafUpdaterManager,
 };
 use anyhow::Error;
 use axum::Router;
@@ -41,9 +41,9 @@ __  __              __            __
 
     logging::init_components().await;
 
-    UpdaterHandlerManager::start().await;
+    BotwafUpdaterManager::start().await;
 
-    let botwaf_state = BotWafState::new();
+    let botwaf_state = BotWafState::new().await;
     let app_router = build_app_router(botwaf_state).await?;
 
     let bind_addr = config::CFG.server.host.clone() + ":" + &config::CFG.server.port.to_string();

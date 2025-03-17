@@ -19,5 +19,5 @@
 // This includes modifications and derived works.
 
 pub mod verifier;
-pub mod verifier_handler;
-pub mod verifier_handler_execution;
+pub mod verifier_base;
+pub mod verifier_execution;

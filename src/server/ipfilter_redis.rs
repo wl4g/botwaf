@@ -18,7 +18,7 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use super::ipfilter_handler::IPFilterHandler;
+use super::ipfilter::IPFilter;
 use crate::{
     cache::{redis::StringRedisCache, ICache},
     types::server::HttpIncomingRequest,
@@ -38,7 +38,11 @@ impl RedisIPFilterHandler {
     }
 
     fn get_client_ip(&self, incoming: Arc<HttpIncomingRequest>) -> Result<String, Error> {
-        incoming.client_ip.as_ref().cloned().ok_or_else(|| anyhow::anyhow!("Client IP not found"))
+        incoming
+            .client_ip
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("Client IP not found"))
     }
 
     /// Converts an IP address to a bitmap offset.
@@ -61,7 +65,7 @@ impl RedisIPFilterHandler {
 }
 
 #[async_trait::async_trait]
-impl IPFilterHandler for RedisIPFilterHandler {
+impl IPFilter for RedisIPFilterHandler {
     async fn is_blocked(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error> {
         let offset = self.get_ip_bitmap_offset(incoming)?;
         self.redis_cache.get_bit(self.redis_key.clone(), offset).await

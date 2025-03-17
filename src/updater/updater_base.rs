@@ -26,29 +26,29 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-use crate::{config::config, updater::updater_handler_llm::SimpleLLMUpdaterHandler};
+use crate::{config::config, updater::updater_langchain::SimpleLLMUpdater};
 
 #[async_trait]
-pub trait IUpdaterHandler: Send + Sync {
+pub trait IBotwafUpdater: Send + Sync {
     async fn start(&self);
 }
 
 lazy_static! {
-    static ref SINGLE_INSTANCE: Mutex<UpdaterHandlerManager> = Mutex::new(UpdaterHandlerManager::new());
+    static ref SINGLE_INSTANCE: Mutex<BotwafUpdaterManager> = Mutex::new(BotwafUpdaterManager::new());
 }
 
-pub struct UpdaterHandlerManager {
-    pub implementations: HashMap<String, Arc<dyn IUpdaterHandler + Send + Sync>>,
+pub struct BotwafUpdaterManager {
+    pub implementations: HashMap<String, Arc<dyn IBotwafUpdater + Send + Sync>>,
 }
 
-impl UpdaterHandlerManager {
+impl BotwafUpdaterManager {
     fn new() -> Self {
-        UpdaterHandlerManager {
+        BotwafUpdaterManager {
             implementations: HashMap::new(),
         }
     }
 
-    pub fn get() -> &'static Mutex<UpdaterHandlerManager> {
+    pub fn get() -> &'static Mutex<BotwafUpdaterManager> {
         &SINGLE_INSTANCE
     }
 
@@ -56,10 +56,10 @@ impl UpdaterHandlerManager {
         tracing::info!("Initializing to updater handlers ...");
 
         for config in &config::CFG.botwaf.updaters {
-            if config.kind == SimpleLLMUpdaterHandler::KIND {
+            if config.kind == SimpleLLMUpdater::KIND {
                 tracing::info!("Initializing implementation updater handler: {}", config.name);
-                let handler = SimpleLLMUpdaterHandler::init(config).await;
-                if let Err(e) = UpdaterHandlerManager::get()
+                let handler = SimpleLLMUpdater::init(config).await;
+                if let Err(e) = BotwafUpdaterManager::get()
                     .lock()
                     .await
                     .register(config.name.to_owned(), handler.clone())
@@ -73,7 +73,12 @@ impl UpdaterHandlerManager {
 
         // Start up all handlers
         for config in &config::CFG.botwaf.updaters {
-            match Self::get().lock().await.get_implementation(config.name.to_owned()).await {
+            match Self::get()
+                .lock()
+                .await
+                .get_implementation(config.name.to_owned())
+                .await
+            {
                 Ok(handler) => {
                     tracing::info!("Starting implementation updater handler: {}", config.name);
                     handler.start().await;
@@ -83,7 +88,11 @@ impl UpdaterHandlerManager {
         }
     }
 
-    pub async fn register(&mut self, name: String, handler: Arc<dyn IUpdaterHandler + Send + Sync>) -> Result<(), Error> {
+    pub async fn register(
+        &mut self,
+        name: String,
+        handler: Arc<dyn IBotwafUpdater + Send + Sync>,
+    ) -> Result<(), Error> {
         // Check if the name already exists
         if self.implementations.contains_key(&name) {
             let errmsg = format!("Updater handler Factory: Name '{}' already exists", name);
@@ -93,7 +102,7 @@ impl UpdaterHandlerManager {
         Ok(())
     }
 
-    pub async fn get_implementation(&self, name: String) -> Result<Arc<dyn IUpdaterHandler + Send + Sync>, Error> {
+    pub async fn get_implementation(&self, name: String) -> Result<Arc<dyn IBotwafUpdater + Send + Sync>, Error> {
         if let Some(implementation) = self.implementations.get(&name) {
             Ok(implementation.clone())
         } else {

@@ -26,8 +26,8 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use super::config::{self, AppConfigProperties};
-use crate::server::knowledge_handler::__path_handle_knowledge_upload;
-use crate::types::knowledge::KnowledgeUploadFile;
+use crate::server::knowledge_router::__path_handle_knowledge_upload;
+use crate::types::knowledge::KnowledgeUploadInfo;
 
 #[derive(utoipa::OpenApi)]
 #[openapi(
@@ -51,7 +51,7 @@ use crate::types::knowledge::KnowledgeUploadFile;
     components(
         schemas(
             // Module of Knowledge
-            KnowledgeUploadFile,
+            KnowledgeUploadInfo,
         )
     ),
     modifiers(&ApiPathPrefixer)

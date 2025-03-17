@@ -10,7 +10,7 @@ keywords = ["AI", "Modsecurity", "Security", "WAF"]
 edition = "2021"
 
 [dependencies]
-axum = "0.8.1"
+axum = { version = "0.8.1", features = ["multipart"] }
 hyper = "1.6.0"
 lazy_static = "1.4.0"
 clap = "4.5.7"

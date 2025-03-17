@@ -26,6 +26,6 @@ use async_trait::async_trait;
 use axum::{body::Body, response::Response};
 
 #[async_trait]
-pub trait IForwardHandler {
+pub trait IForwarder {
     async fn http_forward(&self, incoming: Arc<HttpIncomingRequest>) -> Result<Response<Body>>;
 }

@@ -8,7 +8,7 @@ use crate::{
     },
     logging,
     server::server::BotWafState,
-    verifier::verifier_handler::VerifierHandlerManager,
+    verifier::verifier_base::BotwafVerifierManager,
 };
 use anyhow::Error;
 use axum::Router;
@@ -40,9 +40,9 @@ __  __                        ___
 
     logging::init_components().await;
 
-    VerifierHandlerManager::start().await;
+    BotwafVerifierManager::start().await;
 
-    let botwaf_state = BotWafState::new();
+    let botwaf_state = BotWafState::new().await;
     let app_router = build_app_router(botwaf_state).await?;
 
     let bind_addr = config::CFG.server.host.clone() + ":" + &config::CFG.server.port.to_string();
