@@ -26,7 +26,9 @@ use axum::{body::Body, response::Response};
 use hyper::{header, Method};
 use reqwest::Proxy;
 
-use crate::{config::config, types::server::HttpIncomingRequest};
+use crate::{
+    config::config, types::server::HttpIncomingRequest,
+};
 
 use super::forward_handler::IForwardHandler;
 
@@ -37,21 +39,43 @@ pub struct HttpForwardHandler {
 impl HttpForwardHandler {
     pub fn new() -> Self {
         let mut builder = reqwest::ClientBuilder::new()
-            .connect_timeout(Duration::from_secs(config::CFG.botwaf.forward.connect_timeout))
-            .read_timeout(Duration::from_secs(config::CFG.botwaf.forward.read_timeout))
-            .timeout(Duration::from_secs(config::CFG.botwaf.forward.total_timeout))
-            .connection_verbose(config::CFG.botwaf.forward.verbose);
-        if let Some(proxy) = &config::CFG.botwaf.forward.http_proxy {
-            builder = builder.proxy(Proxy::http(proxy).expect("parse http proxy addr error"));
+            .connect_timeout(Duration::from_secs(
+                config::CFG.botwaf.forward.connect_timeout,
+            ))
+            .read_timeout(Duration::from_secs(
+                config::CFG.botwaf.forward.read_timeout,
+            ))
+            .timeout(Duration::from_secs(
+                config::CFG.botwaf.forward.total_timeout,
+            ))
+            .connection_verbose(
+                config::CFG.botwaf.forward.verbose,
+            );
+        if let Some(proxy) =
+            &config::CFG.botwaf.forward.http_proxy
+        {
+            builder = builder.proxy(
+                Proxy::http(proxy)
+                    .expect("parse http proxy addr error"),
+            );
         }
         Self {
-            client: builder.build().expect("build http client error"),
+            client: builder
+                .build()
+                .expect("build http client error"),
         }
     }
 
     // Extract the upstream URL from the request headers.
-    fn get_upstream_url(&self, incoming: Arc<HttpIncomingRequest>) -> Result<String> {
-        let upstream_header_name = config::CFG.botwaf.forward.upstream_destination_header_name.to_owned();
+    fn get_upstream_url(
+        &self,
+        incoming: Arc<HttpIncomingRequest>,
+    ) -> Result<String> {
+        let upstream_header_name = config::CFG
+            .botwaf
+            .forward
+            .upstream_destination_header_name
+            .to_owned();
         let upstream_base_uri = incoming
             .headers
             .get(&upstream_header_name)
@@ -63,21 +87,46 @@ impl HttpForwardHandler {
                 ))?;
 
         // If the upstream base URL ends with a slash and the path starts with a slash to prevent duplicate slash.
-        let url = if upstream_base_uri.ends_with('/') && incoming.path.starts_with('/') {
-            format!("{}{}", upstream_base_uri, &incoming.path[1..])
-        } else if !upstream_base_uri.ends_with('/') && !incoming.path.starts_with('/') {
-            format!("{}/{}", upstream_base_uri, incoming.path)
+        let url = if upstream_base_uri.ends_with('/')
+            && incoming.path.starts_with('/')
+        {
+            format!(
+                "{}{}",
+                upstream_base_uri,
+                &incoming.path[1..]
+            )
+        } else if !upstream_base_uri.ends_with('/')
+            && !incoming.path.starts_with('/')
+        {
+            format!(
+                "{}/{}",
+                upstream_base_uri, incoming.path
+            )
         } else {
-            format!("{}{}", upstream_base_uri, incoming.path)
+            format!(
+                "{}{}",
+                upstream_base_uri, incoming.path
+            )
         };
 
-        tracing::debug!("Extracted the upstream uri: {}", url);
+        tracing::debug!(
+            "Extracted the upstream uri: {}",
+            url
+        );
         Ok(url)
     }
 
     // Forward the request to the upstream server.
-    async fn do_forward_request(&self, incoming: Arc<HttpIncomingRequest>) -> Result<Response<Body>> {
-        let upstream_header = config::CFG.botwaf.forward.upstream_destination_header_name.as_str().to_uppercase();
+    async fn do_forward_request(
+        &self,
+        incoming: Arc<HttpIncomingRequest>,
+    ) -> Result<Response<Body>> {
+        let upstream_header = config::CFG
+            .botwaf
+            .forward
+            .upstream_destination_header_name
+            .as_str()
+            .to_uppercase();
 
         tracing::info!(
             "Forwarding request to upstream with host: {} path: {}, query: {}",
@@ -86,15 +135,22 @@ impl HttpForwardHandler {
             incoming.query.to_owned().unwrap_or_default(),
         );
 
-        let mut req_builder = self.client.request(Method::from_str(incoming.method.as_str())?, incoming.path.to_owned());
+        let mut req_builder = self.client.request(
+            Method::from_str(incoming.method.as_str())?,
+            incoming.path.to_owned(),
+        );
 
         // Copy original request headers, but exclude certain headers
         for (name, value) in incoming.headers.iter() {
             // Skip certain headers, such as custom upstream destination header and connection related headers.
             let name = name.to_uppercase();
-            if name != upstream_header && name != "POST" && name != "CONNECTION" {
+            if name != upstream_header
+                && name != "POST"
+                && name != "CONNECTION"
+            {
                 for v in value.iter() {
-                    req_builder = req_builder.header(name.to_owned(), v);
+                    req_builder = req_builder
+                        .header(name.to_owned(), v);
                 }
             }
         }
@@ -110,7 +166,9 @@ impl HttpForwardHandler {
 
         let status = resp.status();
         let headers = resp.headers().clone();
-        let bytes = resp.bytes().await.context("Failed to read response body from upstream")?;
+        let bytes = resp.bytes().await.context(
+            "Failed to read response body from upstream",
+        )?;
 
         tracing::info!(
             "Forwarded response from upstream status: {}, host: {} path: {}, query: {}, headers: {:?}",
@@ -144,9 +202,15 @@ impl HttpForwardHandler {
 #[async_trait]
 impl IForwardHandler for HttpForwardHandler {
     #[allow(unused)]
-    async fn http_forward(&self, incoming: Arc<HttpIncomingRequest>) -> Result<Response<Body>> {
+    async fn http_forward(
+        &self,
+        incoming: Arc<HttpIncomingRequest>,
+    ) -> Result<Response<Body>> {
         match self.get_upstream_url(incoming.to_owned()) {
-            Ok(url) => self.do_forward_request(incoming.to_owned()).await,
+            Ok(url) => {
+                self.do_forward_request(incoming.to_owned())
+                    .await
+            }
             Err(err) => Err(err),
         }
     }

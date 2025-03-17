@@ -19,6 +19,7 @@
 // This includes modifications and derived works.
 
 use crate::{
+    botwaf_shutdown_signal,
     cache::redis::StringRedisCache,
     config::{
         config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
@@ -43,7 +44,7 @@ use axum::{
 use modsecurity::{ModSecurity, Rules};
 use regex::Regex;
 use std::{env, sync::Arc};
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, signal};
 use tower::ServiceBuilder;
 
 #[derive(Clone)]
@@ -62,7 +63,12 @@ impl BotWafState {
         let mut rules = Rules::new();
         for rule in config::CFG.botwaf.static_rules.clone() {
             if rule.kind == "RAW" {
-                tracing::info!("Loading the security static rule: {} - {} - {}", rule.name, rule.kind, rule.value);
+                tracing::info!(
+                    "Loading the security static rule: {} - {} - {}",
+                    rule.name,
+                    rule.kind,
+                    rule.value
+                );
                 rules.add_plain(rule.value.as_str()).expect("Failed to add rules");
             }
         }
@@ -90,9 +96,17 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
     let incoming = HttpIncomingRequest::new(req).await;
 
     // Check if the request client IP address is blocked.
-    if state.ipfilter_handler.is_blocked(incoming.to_owned()).await.unwrap_or(false) {
+    if state
+        .ipfilter_handler
+        .is_blocked(incoming.to_owned())
+        .await
+        .unwrap_or(false)
+    {
         let code = StatusCode::from_u16(config::CFG.botwaf.blocked_status_code.unwrap()).unwrap();
-        return Response::builder().status(code).body("Access denied by BotWaf IP Filter".into()).unwrap();
+        return Response::builder()
+            .status(code)
+            .body("Access denied by BotWaf IP Filter".into())
+            .unwrap();
     }
 
     // Create a ModSecurity engine transaction with rules.
@@ -113,15 +127,20 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
             .add_request_header(key, value.as_ref().unwrap_or(&"".to_string()))
             .expect("Error add request header.");
     }
-    transaction.process_request_headers().expect("Error processing request headers");
+    transaction
+        .process_request_headers()
+        .expect("Error processing request headers");
     // Process the request body with ModSecurity engine.
     let req_body = incoming.body.to_owned().unwrap_or_default().to_vec();
-    transaction.append_request_body(&req_body).expect("Error processing request body");
+    transaction
+        .append_request_body(&req_body)
+        .expect("Error processing request body");
 
     // Check if the request is blocked by ModSecurity engine.
     if let Some(intervention) = transaction.intervention() {
         if intervention.status() == 401 || intervention.status() == 403 {
-            let status_code = StatusCode::from_u16(intervention.status() as u16).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+            let status_code =
+                StatusCode::from_u16(intervention.status() as u16).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
             let logmsg = intervention
                 .log()
                 .map(|msg| msg.to_string())
@@ -182,7 +201,10 @@ ____
     eprintln!("");
     eprintln!("{}", ascii_name);
     eprintln!("                Program Version: {}", GIT_VERSION);
-    eprintln!("                Package Version: {}", env!("CARGO_PKG_VERSION").to_string());
+    eprintln!(
+        "                Package Version: {}",
+        env!("CARGO_PKG_VERSION").to_string()
+    );
     eprintln!("                Git Commit Hash: {}", GIT_COMMIT_HASH);
     eprintln!("                 Git Build Date: {}", GIT_BUILD_DATE);
     let load_config = env::var("BOTWAF_CFG_PATH").unwrap_or("Default".to_string());
@@ -207,7 +229,10 @@ ____
         }
     };
 
-    match axum::serve(listener, app_router.into_make_service()).await {
+    match axum::serve(listener, app_router.into_make_service())
+        .with_graceful_shutdown(botwaf_shutdown_signal())
+        .await
+    {
         std::result::Result::Ok(_) => {
             tracing::info!("Botwaf Web server shut down gracefully");
         }
@@ -222,7 +247,10 @@ ____
 
 pub async fn build_app_router(state: BotWafState) -> Result<Router, Error> {
     let app_router = Router::new()
-        .route(URI_HEALTHZ, axum::routing::get(|| async { "BotWaf Web Server is Running!" }))
+        .route(
+            URI_HEALTHZ,
+            axum::routing::get(|| async { "BotWaf Web Server is Running!" }),
+        )
         .layer(ServiceBuilder::new().layer(axum::middleware::from_fn_with_state(state, botwaf_middleware)));
 
     Ok(app_router)

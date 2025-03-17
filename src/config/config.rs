@@ -41,7 +41,9 @@ lazy_static! {
     );
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Validate)]
+#[derive(
+    Debug, Serialize, Deserialize, Clone, Validate,
+)]
 #[serde(rename_all = "kebab-case")]
 pub struct AppConfigProperties {
     #[serde(rename = "service-name")]
@@ -49,6 +51,8 @@ pub struct AppConfigProperties {
     pub service_name: String,
     #[serde(default = "ServerProperties::default")]
     pub server: ServerProperties,
+    #[serde(default = "SwaggerProperties::default")]
+    pub swagger: SwaggerProperties,
     #[serde(default = "LoggingProperties::default")]
     pub logging: LoggingProperties,
     #[serde(default = "CacheProperties::default")]
@@ -59,8 +63,29 @@ pub struct AppConfigProperties {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ServerProperties {
+    #[serde(rename = "host")]
     pub host: String,
+    #[serde(rename = "port")]
     pub port: u16,
+    #[serde(rename = "context-path")]
+    pub context_path: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SwaggerProperties {
+    pub enabled: bool,
+    // pub title: String,
+    // pub description: String,
+    // pub version: String,
+    // pub license_name: String,
+    // pub license_url: String,
+    // pub contact_name: String,
+    // pub contact_email: String,
+    // pub contact_url: String,
+    // pub terms_of_service: String,
+    // //pub security_definitions: vec![],
+    pub swagger_ui_path: String,
+    pub swagger_openapi_url: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -84,9 +109,15 @@ pub struct BotwafProperties {
     pub updaters: Vec<UpdaterProperties>,
     #[serde(rename = "verifiers")]
     pub verifiers: Vec<VerifierProperties>,
-    #[serde(rename = "llm", default = "LlmProperties::default")]
+    #[serde(
+        rename = "llm",
+        default = "LlmProperties::default"
+    )]
     pub llm: LlmProperties,
-    #[serde(rename = "forward", default = "ForwardProperties::default")]
+    #[serde(
+        rename = "forward",
+        default = "ForwardProperties::default"
+    )]
     pub forward: ForwardProperties,
 }
 
@@ -230,6 +261,7 @@ impl AppConfigProperties {
         AppConfigProperties {
             service_name: String::from("botwaf"),
             server: ServerProperties::default(),
+            swagger: SwaggerProperties::default(),
             logging: LoggingProperties::default(),
             cache: CacheProperties::default(),
             botwaf: BotwafProperties::default(),
@@ -242,6 +274,28 @@ impl Default for ServerProperties {
         ServerProperties {
             host: String::from("127.0.0.1"),
             port: 9999,
+            context_path: None,
+        }
+    }
+}
+
+impl Default for SwaggerProperties {
+    fn default() -> Self {
+        SwaggerProperties {
+            enabled: true,
+            // title: "My Webnote API Server".to_string(),
+            // description: "The My Webnote API Server".to_string(),
+            // version: "1.0.0".to_string(),
+            // license_name: "Apache 2.0".to_string(),
+            // license_url: "https://www.apache.org/licenses/LICENSE-2.0".to_string(),
+            // contact_name: "MyWebnote API".to_string(),
+            // contact_email: "jameswong1376@gmail.com".to_string(),
+            // contact_url: "https://github.com/wl4g/my-webnote".to_string(),
+            // terms_of_service: "api/terms-of-service".to_string(),
+            // //security_definitions: vec![],
+            swagger_ui_path: "/swagger-ui".to_string(),
+            swagger_openapi_url: "/api-docs/openapi.json"
+                .to_string(),
         }
     }
 }
@@ -279,7 +333,9 @@ impl Default for MemoryProperties {
 impl Default for RedisProperties {
     fn default() -> Self {
         RedisProperties {
-            nodes: vec!["redis://127.0.0.1:6379".to_string()],
+            nodes: vec![
+                "redis://127.0.0.1:6379".to_string()
+            ],
             username: None,
             password: None,
             connection_timeout: Some(3000),
@@ -296,7 +352,9 @@ impl Default for BotwafProperties {
     fn default() -> Self {
         BotwafProperties {
             blocked_status_code: None,
-            blocked_header_name: String::from("X-BotWaf-Blocked"),
+            blocked_header_name: String::from(
+                "X-BotWaf-Blocked",
+            ),
             allow_addition_modsec_info: true,
             static_rules: vec![],
             llm: LlmProperties::default(),
@@ -380,7 +438,9 @@ impl Default for ForwardProperties {
             read_timeout: 5,
             total_timeout: 10,
             verbose: false,
-            upstream_destination_header_name: String::from("X-Upstream-Destination"),
+            upstream_destination_header_name: String::from(
+                "X-Upstream-Destination",
+            ),
         }
     }
 }
@@ -392,26 +452,46 @@ fn init() -> Arc<AppConfigProperties> {
         env::var("BOTWAF_CFG_PATH")
             .map(|path| {
                 Config::builder()
-                    .add_source(config::File::with_name(path.as_str()))
+                    .add_source(config::File::with_name(
+                        path.as_str(),
+                    ))
                     .add_source(
                         // Extrat candidate from env refer to: https://github.com/rust-cli/config-rs/blob/v0.15.9/src/env.rs#L290
                         // Set up into hierarchy struct attibutes refer to:https://github.com/rust-cli/config-rs/blob/v0.15.9/src/source.rs#L24
-                        config::Environment::with_prefix("BOTWAF")
-                            // Notice: Use double "_" to distinguish between different hierarchy struct or attribute alies at the same level.
-                            .separator("__")
-                            .convert_case(config::Case::Cobol)
-                            .keep_prefix(true), // Remove the prefix when matching.
+                        config::Environment::with_prefix(
+                            "BOTWAF",
+                        )
+                        // Notice: Use double "_" to distinguish between different hierarchy struct or attribute alies at the same level.
+                        .separator("__")
+                        .convert_case(config::Case::Cobol)
+                        .keep_prefix(true), // Remove the prefix when matching.
                     )
                     .build()
-                    .unwrap_or_else(|err| panic!("Error parsing config: {}", err))
-                    .try_deserialize::<AppConfigProperties>()
-                    .unwrap_or_else(|err| panic!("Error deserialize config: {}", err))
+                    .unwrap_or_else(|err| {
+                        panic!(
+                            "Error parsing config: {}",
+                            err
+                        )
+                    })
+                    .try_deserialize::<AppConfigProperties>(
+                    )
+                    .unwrap_or_else(|err| {
+                        panic!(
+                            "Error deserialize config: {}",
+                            err
+                        )
+                    })
             })
             .unwrap_or(AppConfigProperties::default()),
     );
-    if env::var("BOTWAF_CFG_VERBOSE").is_ok() || env::var("VERBOSE").is_ok() {
+    if env::var("BOTWAF_CFG_VERBOSE").is_ok()
+        || env::var("VERBOSE").is_ok()
+    {
         println!("If you don't want to print the loaded configuration details, you can disable it by set up BOTWAF_CFG_VERBOSE=false.");
-        println!("Loaded the config details: {}", serde_json::to_string(config.as_ref()).unwrap());
+        println!(
+            "Loaded the config details: {}",
+            serde_json::to_string(config.as_ref()).unwrap()
+        );
     }
     return config;
 }

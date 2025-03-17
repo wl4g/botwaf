@@ -18,9 +18,26 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-pub mod forward_handler;
-pub mod forward_handler_http;
-pub mod ipfilter_handler;
-pub mod ipfilter_handler_redis;
-pub mod knowledge_handler;
-pub mod server;
+use crate::types::knowledge::KnowledgeUploadFile;
+
+use super::server::BotWafState;
+use axum::{extract::State, response::IntoResponse, routing::post, Json, Router};
+use hyper::StatusCode;
+
+pub fn init() -> Router<BotWafState> {
+    Router::new().route("/modules/knowledge/upload", post(handle_knowledge_upload))
+}
+
+#[utoipa::path(
+    post,
+    path = "/modules/knowledge/upload",
+    request_body = KnowledgeUploadFile,
+    responses((status = 200, description = "Upload Knowledge.", body = KnowledgeUploadFile)),
+    tag = "Knowledge"
+)]
+async fn handle_knowledge_upload(
+    State(state): State<BotWafState>,
+    Json(param): Json<KnowledgeUploadFile>,
+) -> impl IntoResponse {
+    StatusCode::INTERNAL_SERVER_ERROR
+}

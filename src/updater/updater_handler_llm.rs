@@ -21,6 +21,7 @@
 // use openai::chat::{ChatCompletion, ChatCompletionMessage, ChatCompletionMessageRole};
 use async_trait::async_trait;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
@@ -28,12 +29,13 @@ use langchain_rust::{
     chain::{Chain, ConversationalRetrieverChainBuilder},
     embedding::openai::OpenAiEmbedder,
     fmt_message, fmt_template,
-    llm::{OpenAI, OpenAIConfig, OpenAIModel},
+    language_models::options::CallOptions,
+    llm::{OpenAI, OpenAIConfig},
     memory::WindowBufferMemory,
     message_formatter,
     prompt::HumanMessagePromptTemplate,
     prompt_args,
-    schemas::{Document, Message},
+    schemas::{Document, FunctionCallBehavior, Message},
     template_jinja2,
     vectorstore::{pgvector::StoreBuilder, Retriever, VecStoreOptions, VectorStore},
 };
@@ -46,54 +48,70 @@ pub struct SimpleLLMUpdaterHandler {
     config: UpdaterProperties,
     scheduler: Arc<JobScheduler>,
     pgvec_store: Arc<Box<dyn VectorStore>>,
-    generate_openai_config: Arc<OpenAIConfig>,
+    openai_llm: OpenAI<OpenAIConfig>,
 }
 
 impl SimpleLLMUpdaterHandler {
     pub const KIND: &'static str = "SIMPLE_LLM";
 
     pub async fn init(config: &UpdaterProperties) -> Arc<Self> {
-        // Build embedding openai config.
-        let mut embedding_openai_config = OpenAIConfig::new().with_api_base(&config::CFG.botwaf.llm.embedding.api_uri);
+        // Create the embedding openai config.
+        let mut embed_openai_config = OpenAIConfig::new().with_api_base(&config::CFG.botwaf.llm.embedding.api_uri);
         if let Some(api_key) = &config::CFG.botwaf.llm.embedding.api_key {
             // Default used by 'OPENAI_KEY' and 'OPENAI_BASE_URL'.
             // Not require API key to run model by Ollama default.
-            embedding_openai_config = embedding_openai_config.with_api_key(api_key);
+            embed_openai_config = embed_openai_config.with_api_key(api_key);
         }
         if let Some(org_id) = &config::CFG.botwaf.llm.embedding.org_id {
-            embedding_openai_config = embedding_openai_config.with_org_id(org_id);
+            embed_openai_config = embed_openai_config.with_org_id(org_id);
         }
         if let Some(project_id) = &config::CFG.botwaf.llm.embedding.project_id {
-            embedding_openai_config = embedding_openai_config.with_org_id(project_id);
+            embed_openai_config = embed_openai_config.with_org_id(project_id);
         }
 
-        // Build generate openai config.
-        let mut generate_openai_config = OpenAIConfig::new().with_api_base(&config::CFG.botwaf.llm.generate.api_uri);
-        if let Some(api_key) = &config::CFG.botwaf.llm.generate.api_key {
-            generate_openai_config = generate_openai_config.with_api_key(api_key);
-        }
-        if let Some(org_id) = &config::CFG.botwaf.llm.generate.org_id {
-            generate_openai_config = generate_openai_config.with_org_id(org_id);
-        }
-        if let Some(project_id) = &config::CFG.botwaf.llm.generate.project_id {
-            generate_openai_config = generate_openai_config.with_org_id(project_id);
-        }
-
-        // Build pgvector store.
+        // Create the knowledge vector store for PG vector.
         let pgvec_store = StoreBuilder::new()
-            .embedder(OpenAiEmbedder::new(embedding_openai_config))
+            .embedder(OpenAiEmbedder::new(embed_openai_config))
             .pre_delete_collection(true)
+            // TODO:
             .connection_url("postgresql://postgres:postgres@localhost:5432/postgres")
             .vector_dimensions(1536)
             .build()
             .await
             .unwrap();
 
+        // Create call LLM config for openai compability.
+        let mut call_openai_config = OpenAIConfig::new().with_api_base(&config::CFG.botwaf.llm.generate.api_uri);
+        if let Some(api_key) = &config::CFG.botwaf.llm.generate.api_key {
+            call_openai_config = call_openai_config.with_api_key(api_key);
+        }
+        if let Some(org_id) = &config::CFG.botwaf.llm.generate.org_id {
+            call_openai_config = call_openai_config.with_org_id(org_id);
+        }
+        if let Some(project_id) = &config::CFG.botwaf.llm.generate.project_id {
+            call_openai_config = call_openai_config.with_org_id(project_id);
+        }
+
+        // Create the call LLM client for openai compability.
+        // TODO: Should be used configuration.
+        let opts = CallOptions::new()
+            .with_max_tokens(65535)
+            .with_temperature(0.1) // TODO: Should be as low as possible?
+            .with_candidate_count(3) // TODO:
+            // .with_functions(Vec::new()) // TODO:
+            // .with_stop_words(Vec::new()) // TODO:
+            // .with_top_k(3) // TODO:
+            // .with_top_p(0.5 as f32) // TODO:
+            // .with_seed(0) // TODO:
+            .with_function_call_behavior(FunctionCallBehavior::Auto);
+        let openai_llm = OpenAI::new(call_openai_config).with_model("model").with_options(opts);
+
+        // Create the this updater handler instance.
         Arc::new(Self {
             config: config.to_owned(),
             scheduler: Arc::new(JobScheduler::new_with_channel_size(config.channel_size).await.unwrap()),
             pgvec_store: Arc::new(Box::new(pgvec_store)),
-            generate_openai_config: Arc::new(generate_openai_config),
+            openai_llm,
         })
     }
 
@@ -133,7 +151,39 @@ impl SimpleLLMUpdaterHandler {
         // }
 
         // TODO: embedding into vector store
-        let documents = vec![
+        // for testing only, after should be add to pretrain samples upload api.
+
+        // Attack requests (negative samples)
+        let attack_samples = vec![
+            Document::new("192.168.1.1 - - [10/Feb/2024:13:55:36 +0000] \"GET /admin.php?id=1%27%20OR%201=1%20--%20 HTTP/1.1\" 200 2326")
+                .with_metadata(HashMap::from([
+                    ("key1".to_string(), "value1".into()),
+                    ("key2".to_string(), "value2".into()),
+                ])),
+            Document::new("192.168.1.2 - - [10/Feb/2024:14:03:21 +0000] \"POST /login.php HTTP/1.1\" 200 1538 \"<script>alert(1)</script>\"")
+                .with_metadata(HashMap::from([
+                    ("key1".to_string(), "value1".into()),
+                    ("key2".to_string(), "value2".into()),
+                ])),
+            // More attack samples ...
+        ];
+
+        // Normal requests (positive sample)
+        let normal_samples = vec![
+            Document::new("192.168.1.3 - - [10/Feb/2024:14:07:09 +0000] \"GET /index.php HTTP/1.1\" 200 1538").with_metadata(HashMap::from([
+                ("key1".to_string(), "value1".into()),
+                ("key2".to_string(), "value2".into()),
+            ])),
+        ];
+
+        // 存储到不同的命名空间
+        let attack_opts = VecStoreOptions::new().with_name_space("malicious").with_score_threshold(0.5 as f32); // TODO: score threshold;
+        let normal_opts = VecStoreOptions::new().with_name_space("normal").with_score_threshold(0.5 as f32); // TODO: score threshold
+
+        let _ = self.pgvec_store.add_documents(&attack_samples, &attack_opts).await;
+        let _ = self.pgvec_store.add_documents(&normal_samples, &normal_opts).await;
+
+        let docs = vec![
             Document::new(format!(
                 "\nQuestion: {}\nAnswer: {}\n",
                 "Which is the favorite text editor of luis", "Nvim"
@@ -146,10 +196,9 @@ impl SimpleLLMUpdaterHandler {
         let opts = VecStoreOptions::new()
             .with_name_space("botwaf") // TODO: namespace
             .with_score_threshold(0.3 as f32); // TODO: score threshold
-        let _ = self.pgvec_store.add_documents(&documents, &opts);
+        let _ = self.pgvec_store.add_documents(&docs, &opts);
 
         // TODO: retriever & generate
-        let llm = OpenAI::default().with_model(OpenAIModel::Gpt35.to_string());
         let prompt= message_formatter![
                     fmt_message!(Message::new_system_message("You are a helpful assistant")),
                     fmt_template!(HumanMessagePromptTemplate::new(template_jinja2!("
@@ -165,11 +214,11 @@ Helpful Answer:
 
         let retriever = Retriever::new(
             Arc::try_unwrap(self.pgvec_store.to_owned()).unwrap_or_else(|_| panic!("Failed to unwrap pgvec store.")),
-            5,
+            1024,
         )
         .with_options(opts);
         let chain = ConversationalRetrieverChainBuilder::new()
-            .llm(llm)
+            .llm(self.openai_llm.to_owned())
             .rephrase_question(true)
             .return_source_documents(true)
             .memory(WindowBufferMemory::new(100).into())

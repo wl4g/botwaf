@@ -25,6 +25,7 @@ use axum::Router;
 use tokio::net::TcpListener;
 
 use crate::{
+    botwaf_shutdown_signal,
     config::{
         config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
         constant::URI_HEALTHZ,
@@ -49,7 +50,10 @@ ____    __                        __            ___
     eprintln!("");
     eprintln!("{}", ascii_name);
     eprintln!("                Program Version: {}", GIT_VERSION);
-    eprintln!("                Package Version: {}", env!("CARGO_PKG_VERSION").to_string());
+    eprintln!(
+        "                Package Version: {}",
+        env!("CARGO_PKG_VERSION").to_string()
+    );
     eprintln!("                Git Commit Hash: {}", GIT_COMMIT_HASH);
     eprintln!("                 Git Build Date: {}", GIT_BUILD_DATE);
     let load_config = env::var("BOTWAF_CFG_PATH").unwrap_or("Default".to_string());
@@ -77,7 +81,10 @@ ____    __                        __            ___
         }
     };
 
-    match axum::serve(listener, app_router.into_make_service()).await {
+    match axum::serve(listener, app_router.into_make_service())
+        .with_graceful_shutdown(botwaf_shutdown_signal())
+        .await
+    {
         std::result::Result::Ok(_) => {
             tracing::info!("Botwaf Standalone Server shut down gracefully");
         }
@@ -91,7 +98,10 @@ ____    __                        __            ___
 }
 
 pub async fn build_app_router(_: BotWafState) -> Result<Router, Error> {
-    let app_router = Router::new().route(URI_HEALTHZ, axum::routing::get(|| async { "BotWaf Standalone Server is Running!" }));
+    let app_router = Router::new().route(
+        URI_HEALTHZ,
+        axum::routing::get(|| async { "BotWaf Standalone Server is Running!" }),
+    );
 
     Ok(app_router)
 }

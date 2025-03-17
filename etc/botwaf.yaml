@@ -24,6 +24,21 @@ service-name: botwaf
 server:
   host: 0.0.0.0
   port: 9999
+  context-path: "/"
+
+swagger:
+  enabled: true
+  # title: "My Webnote API Server"
+  # description: "The My Webnote API Server"
+  # version: "1.0.0"
+  # license_name: "Apache 2.0"
+  # license_url: "https://www.apache.org/licenses/LICENSE-2.0"
+  # contact_name: "MyWebnote API"
+  # contact_email: "jameswong1376@gmail.com"
+  # contact_url: "https://github.com/wl4g/my-webnote"
+  # terms_of_service: "api/terms-of-service"
+  swagger_ui_path: "/swagger-ui"
+  swagger_openapi_url: "/swagger-ui/openapi.json"
 
 logging:
   mode: Human
