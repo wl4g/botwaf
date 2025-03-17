@@ -76,4 +76,4 @@ RUN echo 'deb http://mirrors.cloud.aliyuncs.com/debian bookworm main contrib non
 COPY --from=builder /usr/local/cargo/bin/botwaf /usr/local/bin/botwaf
 
 # Set the run entrypoint of the container.
-CMD ["botwaf"]
+ENTRYPOINT ["botwaf"]
