@@ -68,7 +68,7 @@ RUN echo 'deb http://mirrors.cloud.aliyuncs.com/debian bookworm main contrib non
     echo 'deb http://mirrors.cloud.aliyuncs.com/debian-security bookworm-security main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
     echo 'deb http://mirrors.cloud.aliyuncs.com/debian bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
     apt-get update && \
-    apt-get install -y libmodsecurity3 libssl3 && \
+    apt-get install -y tini libmodsecurity3 libssl3 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -76,4 +76,4 @@ RUN echo 'deb http://mirrors.cloud.aliyuncs.com/debian bookworm main contrib non
 COPY --from=builder /usr/local/cargo/bin/botwaf /usr/local/bin/botwaf
 
 # Set the run entrypoint of the container.
-ENTRYPOINT ["botwaf"]
+ENTRYPOINT ["/sbin/tini", "-s", "-g", "--", "botwaf"]
