@@ -61,8 +61,8 @@ ____    __                        __            ___
 
     logging::init_components().await;
 
-    BotwafUpdaterManager::start().await;
-    BotwafVerifierManager::start().await;
+    BotwafUpdaterManager::init().await;
+    BotwafVerifierManager::init().await;
 
     let botwaf_state = BotWafState::new().await;
     let app_router = build_app_router(botwaf_state).await?;

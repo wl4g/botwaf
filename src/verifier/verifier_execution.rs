@@ -34,7 +34,7 @@ pub struct SimpleExecuteBasedVerifier {
 impl SimpleExecuteBasedVerifier {
     pub const KIND: &'static str = "SIMPLE_EXECUTE";
 
-    pub async fn init(config: &VerifierProperties) -> Arc<Self> {
+    pub async fn new(config: &VerifierProperties) -> Arc<Self> {
         Arc::new(Self {
             config: config.to_owned(),
             scheduler: Arc::new(JobScheduler::new_with_channel_size(config.channel_size).await.unwrap()),
@@ -50,7 +50,7 @@ impl SimpleExecuteBasedVerifier {
 #[async_trait]
 impl IBotwafVerifier for SimpleExecuteBasedVerifier {
     // start async thread job to re-scaning near real-time recorded access events.
-    async fn start(&self) {
+    async fn init(&self) {
         let this = self.clone();
 
         // Pre-check the cron expression is valid.

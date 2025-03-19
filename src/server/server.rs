@@ -20,17 +20,13 @@
 
 use crate::{
     botwaf_shutdown_signal,
-    cache::redis::StringRedisCache,
     config::{
         config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
         constant::{EXCLUDED_PATHS, URI_HEALTHZ},
     },
     handler::{llm_handler::ILLMHandler, llm_handler_langchain::LangchainLLMHandler},
     logging,
-    server::{
-        forwarder::IForwarder, forwarder_http::HttpForwardHandler, ipfilter::IPFilter,
-        ipfilter_redis::RedisIPFilterHandler,
-    },
+    server::{forwarder::IForwarder, forwarder_http::HttpForwardHandler},
     types::server::HttpIncomingRequest,
 };
 use anyhow::{Error, Ok};
@@ -45,16 +41,15 @@ use axum::{
 use modsecurity::{ModSecurity, Rules};
 use regex::Regex;
 use std::{env, sync::Arc};
-use tokio::{net::TcpListener, signal};
+use tokio::net::TcpListener;
 use tower::ServiceBuilder;
+
+use super::{ipfilter::IPFilterManager, ipfilter_redis::RedisIPFilter};
 
 #[derive(Clone)]
 pub struct BotWafState {
     pub modsec_engine: Arc<ModSecurity>,
     pub modsec_rules: Arc<Rules>,
-    #[allow(unused)]
-    pub redis_cache: Arc<StringRedisCache>,
-    pub ipfilter: Arc<dyn IPFilter + Send + Sync>,
     pub forwarder: Arc<dyn IForwarder + Send + Sync>,
     pub llm_handler: Arc<dyn ILLMHandler + Send + Sync>,
 }
@@ -77,13 +72,9 @@ impl BotWafState {
         }
         let modsec_rules = Arc::new(rules);
 
-        let redis_cache = Arc::new(StringRedisCache::new(&config::CFG.cache.redis));
-
         BotWafState {
             modsec_engine,
             modsec_rules,
-            redis_cache: redis_cache.to_owned(),
-            ipfilter: RedisIPFilterHandler::new(redis_cache, config::CFG.botwaf.blocked_header_name.clone()),
             forwarder: Arc::new(HttpForwardHandler::new()),
             llm_handler: Arc::new(LangchainLLMHandler::new().await),
         }
@@ -101,8 +92,12 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
     // Wrap to unified incoming request.
     let incoming = HttpIncomingRequest::new(req).await;
 
+    // Obtain the available IP filter instance.
+    let ipfilter = IPFilterManager::get_implementation(RedisIPFilter::NAME.to_owned())
+        .expect("Failed to get IP filter implementation.");
+
     // Check if the request client IP address is blocked.
-    if state.ipfilter.is_blocked(incoming.to_owned()).await.unwrap_or(false) {
+    if ipfilter.is_blocked(incoming.to_owned()).await.unwrap_or(false) {
         let code = StatusCode::from_u16(config::CFG.botwaf.blocked_status_code.unwrap()).unwrap();
         return Response::builder()
             .status(code)

@@ -31,7 +31,7 @@ use super::verifier_execution::SimpleExecuteBasedVerifier;
 
 #[async_trait]
 pub trait IBotwafVerifier: Send + Sync {
-    async fn start(&self);
+    async fn init(&self);
 }
 
 lazy_static! {
@@ -53,26 +53,24 @@ impl BotwafVerifierManager {
         &SINGLE_INSTANCE
     }
 
-    pub async fn start() {
-        tracing::info!("Initializing to verifier handlers ...");
-
+    pub async fn init() {
+        tracing::info!("Register All Botwaf verifiers ...");
         for config in &config::CFG.botwaf.verifiers {
             if config.kind == SimpleExecuteBasedVerifier::KIND {
-                tracing::info!("Initializing implementation verifier handler: {}", config.name);
-                let handler = SimpleExecuteBasedVerifier::init(config).await;
+                tracing::info!("Initializing implementation Botwaf verifier: {}", config.name);
+                let handler = SimpleExecuteBasedVerifier::new(config).await;
                 if let Err(e) = BotwafVerifierManager::get()
                     .lock()
                     .await
-                    .register(config.name.to_owned(), handler.clone())
-                    .await
+                    .register(config.name.to_owned(), handler.to_owned())
                 {
-                    tracing::error!("Failed to register verifier handler: {}", e);
+                    tracing::error!("Failed to register Botwaf verifier: {}", e);
                 }
-                tracing::info!("Registered implementation verifier handler: {}", config.name);
+                tracing::info!("Registered implementation Botwaf verifier: {}", config.name);
             }
         }
 
-        // Start up all handlers
+        tracing::info!("Initializing All Botwaf verifiers ...");
         for config in &config::CFG.botwaf.verifiers {
             match Self::get()
                 .lock()
@@ -81,22 +79,18 @@ impl BotwafVerifierManager {
                 .await
             {
                 Ok(handler) => {
-                    tracing::info!("Starting implementation verifier handler: {}", config.name);
-                    handler.start().await;
+                    tracing::info!("Initializing implementation Botwaf verifier: {}", config.name);
+                    handler.init().await;
                 }
                 Err(_) => {}
             }
         }
     }
 
-    pub async fn register(
-        &mut self,
-        name: String,
-        handler: Arc<dyn IBotwafVerifier + Send + Sync>,
-    ) -> Result<(), Error> {
+    fn register(&mut self, name: String, handler: Arc<dyn IBotwafVerifier + Send + Sync>) -> Result<(), Error> {
         // Check if the name already exists
         if self.implementations.contains_key(&name) {
-            let errmsg = format!("Verifier Handler Factory: Name '{}' already exists", name);
+            let errmsg = format!("Verifier Factory: Name '{}' already exists", name);
             return Err(Error::msg(errmsg));
         }
         self.implementations.insert(name, handler);
@@ -107,7 +101,7 @@ impl BotwafVerifierManager {
         if let Some(implementation) = self.implementations.get(&name) {
             Ok(implementation.clone())
         } else {
-            let errmsg = format!("Handler Factory: Name '{}' does't exists", name);
+            let errmsg = format!("Verifier Factory: Name '{}' does't exists", name);
             return Err(Error::msg(errmsg));
         }
     }

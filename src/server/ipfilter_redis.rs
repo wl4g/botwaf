@@ -26,14 +26,15 @@ use crate::{
 use anyhow::{Error, Ok, Result};
 use std::{net::IpAddr, str::FromStr, sync::Arc};
 
-pub struct RedisIPFilterHandler {
+pub struct RedisIPFilter {
     redis_cache: Arc<StringRedisCache>,
     redis_key: String,
 }
 
-impl RedisIPFilterHandler {
-    /// Creates a new RedisIPFilterHandler
-    pub fn new(redis_cache: Arc<StringRedisCache>, redis_key: String) -> Arc<RedisIPFilterHandler> {
+impl RedisIPFilter {
+    pub const NAME: &'static str = "REDIS";
+
+    pub fn new(redis_cache: Arc<StringRedisCache>, redis_key: String) -> Arc<RedisIPFilter> {
         Arc::new(Self { redis_cache, redis_key })
     }
 
@@ -65,7 +66,11 @@ impl RedisIPFilterHandler {
 }
 
 #[async_trait::async_trait]
-impl IPFilter for RedisIPFilterHandler {
+impl IPFilter for RedisIPFilter {
+    async fn init(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
     async fn is_blocked(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error> {
         let offset = self.get_ip_bitmap_offset(incoming)?;
         self.redis_cache.get_bit(self.redis_key.clone(), offset).await

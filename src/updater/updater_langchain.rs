@@ -54,7 +54,7 @@ pub struct SimpleLLMUpdater {
 impl SimpleLLMUpdater {
     pub const KIND: &'static str = "SIMPLE_LANGCHAIN";
 
-    pub async fn init(config: &UpdaterProperties) -> Arc<Self> {
+    pub async fn new(config: &UpdaterProperties) -> Arc<Self> {
         // Create the embedding openai config.
         let mut embed_openai_config = OpenAIConfig::new().with_api_base(&config::CFG.botwaf.llm.embedding.api_uri);
         if let Some(api_key) = &config::CFG.botwaf.llm.embedding.api_key {
@@ -262,7 +262,7 @@ Helpful Answer:
 #[async_trait]
 impl IBotwafUpdater for SimpleLLMUpdater {
     // start async thread job to re-scaning near real-time recorded access events.
-    async fn start(&self) {
+    async fn init(&self) {
         let this = self.clone();
 
         // Pre-check the cron expression is valid.

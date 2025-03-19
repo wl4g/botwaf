@@ -30,7 +30,7 @@ use crate::{config::config, updater::updater_langchain::SimpleLLMUpdater};
 
 #[async_trait]
 pub trait IBotwafUpdater: Send + Sync {
-    async fn start(&self);
+    async fn init(&self);
 }
 
 lazy_static! {
@@ -52,26 +52,25 @@ impl BotwafUpdaterManager {
         &SINGLE_INSTANCE
     }
 
-    pub async fn start() {
-        tracing::info!("Initializing to updater handlers ...");
+    pub async fn init() {
+        tracing::info!("Register All Botwaf updaters ...");
 
         for config in &config::CFG.botwaf.updaters {
             if config.kind == SimpleLLMUpdater::KIND {
-                tracing::info!("Initializing implementation updater handler: {}", config.name);
-                let handler = SimpleLLMUpdater::init(config).await;
+                tracing::info!("Initializing implementation Botwaf updater: {}", config.name);
+                let handler = SimpleLLMUpdater::new(config).await;
                 if let Err(e) = BotwafUpdaterManager::get()
                     .lock()
                     .await
                     .register(config.name.to_owned(), handler.clone())
-                    .await
                 {
-                    tracing::error!("Failed to register LLM updater handler: {}", e);
+                    tracing::error!("Failed to register updater: {}", e);
                 }
-                tracing::info!("Registered implementation updater handler: {}", config.name);
+                tracing::info!("Registered implementation updater: {}", config.name);
             }
         }
 
-        // Start up all handlers
+        tracing::info!("Initializing All Botwaf updaters ...");
         for config in &config::CFG.botwaf.updaters {
             match Self::get()
                 .lock()
@@ -80,22 +79,18 @@ impl BotwafUpdaterManager {
                 .await
             {
                 Ok(handler) => {
-                    tracing::info!("Starting implementation updater handler: {}", config.name);
-                    handler.start().await;
+                    tracing::info!("Initializing implementation Botwaf updater: {}", config.name);
+                    handler.init().await;
                 }
                 Err(_) => {}
             }
         }
     }
 
-    pub async fn register(
-        &mut self,
-        name: String,
-        handler: Arc<dyn IBotwafUpdater + Send + Sync>,
-    ) -> Result<(), Error> {
+    fn register(&mut self, name: String, handler: Arc<dyn IBotwafUpdater + Send + Sync>) -> Result<(), Error> {
         // Check if the name already exists
         if self.implementations.contains_key(&name) {
-            let errmsg = format!("Updater handler Factory: Name '{}' already exists", name);
+            let errmsg = format!("Updater Factory: Name '{}' already exists", name);
             return Err(Error::msg(errmsg));
         }
         self.implementations.insert(name, handler);
