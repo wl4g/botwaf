@@ -23,7 +23,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::{server::forwarder_http::HttpForwardHandler, types::server::HttpIncomingRequest};
+use crate::{server::forwarder_http::HttpForwardHandler, types::forwarder::HttpIncomingRequest};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use axum::{body::Body, response::Response};

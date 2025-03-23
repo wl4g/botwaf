@@ -115,11 +115,18 @@ impl LangchainLLMHandler {
 #[async_trait::async_trait]
 impl ILLMHandler for LangchainLLMHandler {
     async fn embedding(&self, mut info: KnowledgeUploadInfo, file: File) -> Result<KnowledgeUploadInfo, anyhow::Error> {
-        info.status = KnowledgeStatus::RECEIVED; // TODO: update to upload table.
+        info.status = KnowledgeStatus::RECEIVED;
 
-        // TODO: write to upload table raw info before.
+        // TODO: Update to upload table.
+        // ...
 
-        info.status = KnowledgeStatus::EMBEDDING; // TODO: update to upload table.
+        info.status = KnowledgeStatus::PERSISTING;
+        // TODO: Upload to Object Storage for backup raw file
+        // ...
+
+        info.status = KnowledgeStatus::PREPARING;
+        // TODO: Update to upload table.
+        // ...
 
         // Parse file into documents
         let reader = BufReader::new(file);
@@ -159,14 +166,22 @@ impl ILLMHandler for LangchainLLMHandler {
             }
         };
 
+        info.status = KnowledgeStatus::EMBEDDING;
+        // TODO: Update to upload table.
+        // ...
+
         match self.pgvec_store.add_documents(&documents, &store_options).await {
             std::result::Result::Ok(_) => {
                 tracing::info!("Embedding success.");
-                info.status = KnowledgeStatus::EMBEDDED; // TODO: update to upload table.
+                info.status = KnowledgeStatus::EMBEDDED;
+                // TODO: update to upload table.
+                // ...
             }
             Err(e) => {
                 tracing::error!("Embedding failed: {}", e);
-                info.status = KnowledgeStatus::FAILED; // TODO: update to upload table.
+                info.status = KnowledgeStatus::FAILED;
+                // TODO: update to upload table.
+                // ...
             }
         }
 
@@ -174,7 +189,7 @@ impl ILLMHandler for LangchainLLMHandler {
     }
 
     async fn generate(&self) -> Result<(), anyhow::Error> {
-        // TODO: retriever & generate
+        // TODO: retriever & generate.
         let prompt= message_formatter![
                     fmt_message!(Message::new_system_message("You are a helpful assistant")),
                     fmt_template!(HumanMessagePromptTemplate::new(template_jinja2!("

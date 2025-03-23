@@ -20,7 +20,7 @@
 
 use crate::{
     cache::redis::StringRedisCache, config::config, server::ipfilter_redis::RedisIPFilter,
-    types::server::HttpIncomingRequest,
+    types::forwarder::HttpIncomingRequest,
 };
 use anyhow::{Error, Result};
 use lazy_static::lazy_static;

@@ -18,9 +18,7 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::{
-    collections::HashMap, net::SocketAddr, sync::Arc,
-};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 use axum::{
     body::{to_bytes, Body, Bytes},
@@ -54,19 +52,10 @@ pub struct HttpIncomingRequest {
 impl HttpIncomingRequest {
     pub async fn new(req: Request<Body>) -> Arc<Self> {
         let (parts, body) = req.into_parts();
-        let bytes = to_bytes(
-            body,
-            config::CFG.botwaf.forward.max_body_bytes,
-        )
-        .await
-        .expect("Failed to collect request body");
-        let (req, body) = (
-            Request::from_parts(
-                parts,
-                Body::from(bytes.clone()),
-            ),
-            bytes,
-        );
+        let bytes = to_bytes(body, config::CFG.botwaf.forward.max_body_bytes)
+            .await
+            .expect("Failed to collect request body");
+        let (req, body) = (Request::from_parts(parts, Body::from(bytes.clone())), bytes);
         let uri = req.uri();
 
         // Extract request headers.
@@ -75,10 +64,7 @@ impl HttpIncomingRequest {
             .iter()
             .map(|(name, value)| {
                 let key = name.as_str().to_string();
-                let value = value
-                    .to_str()
-                    .map(|v| v.to_string())
-                    .ok();
+                let value = value.to_str().map(|v| v.to_string()).ok();
                 (key, value)
             })
             .collect();
@@ -88,16 +74,8 @@ impl HttpIncomingRequest {
             .headers()
             .get("X-Forwarded-For")
             .or(req.headers().get("X-Real-IP"))
-            .map(|addr| {
-                addr.to_str()
-                    .map(|s| s.to_string())
-                    .unwrap_or_default()
-            })
-            .or_else(|| {
-                req.extensions()
-                    .get::<SocketAddr>()
-                    .map(|addr| addr.ip().to_string())
-            });
+            .map(|addr| addr.to_str().map(|s| s.to_string()).unwrap_or_default())
+            .or_else(|| req.extensions().get::<SocketAddr>().map(|addr| addr.ip().to_string()));
 
         Arc::new(HttpIncomingRequest {
             method: req.method().to_string(),

@@ -26,7 +26,7 @@ use axum::{body::Body, response::Response};
 use hyper::{header, Method};
 use reqwest::Proxy;
 
-use crate::{config::config, types::server::HttpIncomingRequest};
+use crate::{config::config, types::forwarder::HttpIncomingRequest};
 
 use super::forwarder::IForwarder;
 

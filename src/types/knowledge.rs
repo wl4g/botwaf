@@ -34,6 +34,8 @@ pub struct HttpThreatSampleRecord {
 pub enum KnowledgeStatus {
     RECEIVED,
     //QUEUED,
+    PERSISTING,
+    PREPARING,
     EMBEDDING,
     EMBEDDED,
     FAILED,
@@ -50,6 +52,7 @@ pub struct KnowledgeUploadInfo {
     pub id: String,
     pub name: String,
     pub labels: HashMap<String, String>,
+    pub extension: String,
     pub category: KnowledgeCategory,
     pub lines: usize,
     pub status: KnowledgeStatus,
@@ -62,6 +65,7 @@ impl KnowledgeUploadInfo {
     pub async fn new(
         name: String,
         labels: HashMap<String, String>,
+        extension: String,
         category: KnowledgeCategory,
         create_by: Option<String>,
     ) -> Arc<Self> {
@@ -69,6 +73,7 @@ impl KnowledgeUploadInfo {
             id: Uuid::new_v4().to_string().replace("-", ""),
             name,
             labels,
+            extension,
             category,
             lines: 0,
             status: KnowledgeStatus::RECEIVED,

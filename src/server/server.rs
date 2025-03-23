@@ -27,7 +27,7 @@ use crate::{
     handler::{llm_handler::ILLMHandler, llm_handler_langchain::LangchainLLMHandler},
     logging,
     server::forwarder_http::HttpForwardHandler,
-    types::server::HttpIncomingRequest,
+    types::forwarder::HttpIncomingRequest,
 };
 use anyhow::{Error, Ok};
 use axum::{

@@ -21,7 +21,7 @@
 use super::ipfilter::IPFilter;
 use crate::{
     cache::{redis::StringRedisCache, ICache},
-    types::server::HttpIncomingRequest,
+    types::forwarder::HttpIncomingRequest,
 };
 use anyhow::{Error, Ok, Result};
 use std::{net::IpAddr, str::FromStr, sync::Arc};
