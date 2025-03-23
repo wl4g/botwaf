@@ -56,6 +56,11 @@ impl BotwafUpdaterManager {
         tracing::info!("Register All Botwaf updaters ...");
 
         for config in &config::CFG.botwaf.updaters {
+            if !config.enabled {
+                tracing::info!("Skipping implementation updater: {}", config.name);
+                continue;
+            }
+            // TODO: Full use similar java spi provider mechanism.
             if config.kind == SimpleLLMUpdater::KIND {
                 tracing::info!("Initializing implementation Botwaf updater: {}", config.name);
                 let handler = SimpleLLMUpdater::new(config).await;
@@ -69,9 +74,13 @@ impl BotwafUpdaterManager {
                 tracing::info!("Registered implementation updater: {}", config.name);
             }
         }
-
         tracing::info!("Initializing All Botwaf updaters ...");
         for config in &config::CFG.botwaf.updaters {
+            if !config.enabled {
+                tracing::info!("Skipping implementation updater: {}", config.name);
+                continue;
+            }
+            // TODO: Full use similar java spi provider mechanism.
             match Self::get()
                 .lock()
                 .await

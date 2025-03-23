@@ -56,6 +56,11 @@ impl BotwafVerifierManager {
     pub async fn init() {
         tracing::info!("Register All Botwaf verifiers ...");
         for config in &config::CFG.botwaf.verifiers {
+            if !config.enabled {
+                tracing::info!("Skipping implementation verifier: {}", config.name);
+                continue;
+            }
+            // TODO: Full use similar java spi provider mechanism.
             if config.kind == SimpleExecuteBasedVerifier::KIND {
                 tracing::info!("Initializing implementation Botwaf verifier: {}", config.name);
                 let handler = SimpleExecuteBasedVerifier::new(config).await;
@@ -69,9 +74,13 @@ impl BotwafVerifierManager {
                 tracing::info!("Registered implementation Botwaf verifier: {}", config.name);
             }
         }
-
         tracing::info!("Initializing All Botwaf verifiers ...");
         for config in &config::CFG.botwaf.verifiers {
+            if !config.enabled {
+                tracing::info!("Skipping implementation verifier: {}", config.name);
+                continue;
+            }
+            // TODO: Full use similar java spi provider mechanism.
             match Self::get()
                 .lock()
                 .await
