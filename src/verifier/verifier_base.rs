@@ -27,7 +27,7 @@ use tokio::sync::Mutex;
 
 use crate::config::config;
 
-use super::verifier_execution::SimpleExecuteBasedVerifier;
+use super::verifier_simple_execution::SimpleExecuteBasedVerifier;
 
 #[async_trait]
 pub trait IBotwafVerifier: Send + Sync {

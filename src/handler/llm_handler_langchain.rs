@@ -21,7 +21,7 @@
 use super::llm_handler::ILLMHandler;
 use crate::{
     config::config,
-    types::knowledge::{KnowledgeStatus, KnowledgeUploadInfo},
+    types::knowledge::{KnowledgeCategory, KnowledgeStatus, KnowledgeUploadInfo},
 };
 use std::{
     collections::HashMap,
@@ -54,22 +54,22 @@ pub struct LangchainLLMHandler {
 impl LangchainLLMHandler {
     pub async fn new() -> Self {
         // Create the embedding openai config.
-        let mut embed_openai_config = OpenAIConfig::new().with_api_base(&config::CFG.botwaf.llm.embedding.api_uri);
+        let mut embedding_openai_config = OpenAIConfig::new().with_api_base(&config::CFG.botwaf.llm.embedding.api_uri);
         if let Some(api_key) = &config::CFG.botwaf.llm.embedding.api_key {
             // Default used by 'OPENAI_KEY' and 'OPENAI_BASE_URL'.
             // Not require API key to run model by Ollama default.
-            embed_openai_config = embed_openai_config.with_api_key(api_key);
+            embedding_openai_config = embedding_openai_config.with_api_key(api_key);
         }
         if let Some(org_id) = &config::CFG.botwaf.llm.embedding.org_id {
-            embed_openai_config = embed_openai_config.with_org_id(org_id);
+            embedding_openai_config = embedding_openai_config.with_org_id(org_id);
         }
         if let Some(project_id) = &config::CFG.botwaf.llm.embedding.project_id {
-            embed_openai_config = embed_openai_config.with_org_id(project_id);
+            embedding_openai_config = embedding_openai_config.with_org_id(project_id);
         }
 
         // Create the knowledge vector store for PG vector.
         let pgvec_store = StoreBuilder::new()
-            .embedder(OpenAiEmbedder::new(embed_openai_config))
+            .embedder(OpenAiEmbedder::new(embedding_openai_config))
             .pre_delete_collection(true)
             // TODO:
             .connection_url("postgresql://postgres:postgres@localhost:5432/postgres")
@@ -131,11 +131,11 @@ impl ILLMHandler for LangchainLLMHandler {
                     continue;
                 }
 
-                // Create metadata for document
+                // Create metadata for sample document.
                 let mut metadata = HashMap::new();
                 metadata.insert("source".to_string(), "uploaded_file".into());
                 metadata.insert("filename".to_string(), info.name.clone().into());
-                metadata.insert("line_number".to_string(), line_num.to_string().into());
+                metadata.insert("line".to_string(), line_num.to_string().into());
 
                 // Add user-provided labels
                 for (key, value) in &info.labels {
@@ -146,17 +146,20 @@ impl ILLMHandler for LangchainLLMHandler {
             }
         }
 
-        let mut options = VecStoreOptions::new()
-            .with_name_space("malicious") // Attack requests (negative samples)
-            .with_score_threshold(0.5 as f32); // TODO: score threshold;
+        let store_options = match info.category {
+            KnowledgeCategory::NORMAL => {
+                VecStoreOptions::new()
+                    .with_name_space("NORMAL") // Normal requests (positive category samples)
+                    .with_score_threshold(0.5 as f32) // TODO: score threshold
+            }
+            KnowledgeCategory::MALICIOUS => {
+                VecStoreOptions::new()
+                    .with_name_space("MALICIOUS") // Maybe attack malicious requests (negative category sample)
+                    .with_score_threshold(0.5 as f32) // TODO: score threshold
+            }
+        };
 
-        if info.positive {
-            options = VecStoreOptions::new()
-                .with_name_space("normal") // Normal requests (positive sample)
-                .with_score_threshold(0.5 as f32); // TODO: score threshold
-        }
-
-        match self.pgvec_store.add_documents(&documents, &options).await {
+        match self.pgvec_store.add_documents(&documents, &store_options).await {
             std::result::Result::Ok(_) => {
                 tracing::info!("Embedding success.");
                 info.status = KnowledgeStatus::EMBEDDED; // TODO: update to upload table.
@@ -226,48 +229,48 @@ Helpful Answer:
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*;
 
-    #[tokio::test]
-    async fn test_llm_vector_store() {
-        // Attack requests (negative samples)
-        let attack_samples = vec![
-            Document::new("192.168.1.1 - - [10/Feb/2024:13:55:36 +0000] \"GET /admin.php?id=1%27%20OR%201=1%20--%20 HTTP/1.1\" 200 2326")
-                .with_metadata(HashMap::from([
-                    ("key1".to_string(), "value1".into()),
-                    ("key2".to_string(), "value2".into()),
-                ])),
-            Document::new("192.168.1.2 - - [10/Feb/2024:14:03:21 +0000] \"POST /login.php HTTP/1.1\" 200 1538 \"<script>alert(1)</script>\"")
-                .with_metadata(HashMap::from([
-                    ("key1".to_string(), "value1".into()),
-                    ("key2".to_string(), "value2".into()),
-                ])),
-            // More attack samples ...
-        ];
+    // #[tokio::test]
+    // async fn test_llm_vector_store() {
+    //     // Attack requests (negative samples)
+    //     let attack_samples = vec![
+    //         Document::new("192.168.1.1 - - [10/Feb/2024:13:55:36 +0000] \"GET /admin.php?id=1%27%20OR%201=1%20--%20 HTTP/1.1\" 200 2326")
+    //             .with_metadata(HashMap::from([
+    //                 ("key1".to_string(), "value1".into()),
+    //                 ("key2".to_string(), "value2".into()),
+    //             ])),
+    //         Document::new("192.168.1.2 - - [10/Feb/2024:14:03:21 +0000] \"POST /login.php HTTP/1.1\" 200 1538 \"<script>alert(1)</script>\"")
+    //             .with_metadata(HashMap::from([
+    //                 ("key1".to_string(), "value1".into()),
+    //                 ("key2".to_string(), "value2".into()),
+    //             ])),
+    //         // More attack samples ...
+    //     ];
 
-        // Normal requests (positive sample)
-        let normal_samples =
-            vec![
-                Document::new("192.168.1.3 - - [10/Feb/2024:14:07:09 +0000] \"GET /index.php HTTP/1.1\" 200 1538")
-                    .with_metadata(HashMap::from([
-                        ("key1".to_string(), "value1".into()),
-                        ("key2".to_string(), "value2".into()),
-                    ])),
-            ];
+    //     // Normal requests (positive sample)
+    //     let normal_samples =
+    //         vec![
+    //             Document::new("192.168.1.3 - - [10/Feb/2024:14:07:09 +0000] \"GET /index.php HTTP/1.1\" 200 1538")
+    //                 .with_metadata(HashMap::from([
+    //                     ("key1".to_string(), "value1".into()),
+    //                     ("key2".to_string(), "value2".into()),
+    //                 ])),
+    //         ];
 
-        let documents = vec![
-            Document::new(format!(
-                "\nQuestion: {}\nAnswer: {}\n",
-                "Which is the favorite text editor of luis", "Nvim"
-            )),
-            Document::new(format!("\nQuestion: {}\nAnswer: {}\n", "How old is Luis", "24")),
-            Document::new(format!("\nQuestion: {}\nAnswer: {}\n", "Where do luis live", "Peru")),
-            Document::new(format!(
-                "\nQuestion: {}\nAnswer: {}\n",
-                "Whats his favorite food", "Pan con chicharron"
-            )),
-        ];
+    //     let documents = vec![
+    //         Document::new(format!(
+    //             "\nQuestion: {}\nAnswer: {}\n",
+    //             "Which is the favorite text editor of luis", "Nvim"
+    //         )),
+    //         Document::new(format!("\nQuestion: {}\nAnswer: {}\n", "How old is Luis", "24")),
+    //         Document::new(format!("\nQuestion: {}\nAnswer: {}\n", "Where do luis live", "Peru")),
+    //         Document::new(format!(
+    //             "\nQuestion: {}\nAnswer: {}\n",
+    //             "Whats his favorite food", "Pan con chicharron"
+    //         )),
+    //     ];
 
-        todo!()
-    }
+    //     todo!()
+    // }
 }

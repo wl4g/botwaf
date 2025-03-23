@@ -30,7 +30,7 @@ pub struct HttpThreatSampleRecord {
     metadata: serde_json::Value,
 }
 
-#[derive(Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub enum KnowledgeStatus {
     RECEIVED,
     //QUEUED,
@@ -39,13 +39,21 @@ pub enum KnowledgeStatus {
     FAILED,
 }
 
-#[derive(Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
+pub enum KnowledgeCategory {
+    NORMAL,
+    MALICIOUS,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct KnowledgeUploadInfo {
     pub id: String,
     pub name: String,
     pub labels: HashMap<String, String>,
-    pub positive: bool,
+    pub category: KnowledgeCategory,
+    pub lines: usize,
     pub status: KnowledgeStatus,
+    pub description: Option<String>,
     pub create_at: u64,
     pub create_by: Option<String>,
 }
@@ -54,15 +62,17 @@ impl KnowledgeUploadInfo {
     pub async fn new(
         name: String,
         labels: HashMap<String, String>,
-        positive: bool,
+        category: KnowledgeCategory,
         create_by: Option<String>,
     ) -> Arc<Self> {
         Arc::new(KnowledgeUploadInfo {
             id: Uuid::new_v4().to_string().replace("-", ""),
             name,
             labels,
-            positive,
+            category,
+            lines: 0,
             status: KnowledgeStatus::RECEIVED,
+            description: None,
             create_at: Utc::now().timestamp_millis() as u64,
             create_by,
         })

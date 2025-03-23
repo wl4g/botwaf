@@ -73,7 +73,7 @@ botwaf:
   # ModSec rules updater based LLM, and similar design as k8s multi specification controller implementation.
   updaters:
     - name: "defaultUpdater"
-      kind: "SIMPLE_LANGCHAIN"
+      kind: "SIMPLE_LLM"
       enabled: true
       cron: "0 * * * * *"
       channel-size: 200

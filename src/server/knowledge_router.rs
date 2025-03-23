@@ -127,16 +127,14 @@ async fn handle_knowledge_upload(State(state): State<BotWafState>, mut multipart
         }
     };
 
-    // Store documents
+    // Store documents to Vector DB.
     match &state.llm_handler.embedding(knowledge_info, file).await {
         Ok(info) => {
-            // TODO: response struct
             let response = serde_json::json!({
-                "status": "success",
                 "id": &info.id,
                 "name": &info.name,
-                "documents_count": 1, //documents.len()
-                "namespace": "namespace TODO"
+                "status": info.status,
+                "lines": info.lines,
             });
             (StatusCode::OK, Json(response)).into_response()
         }

@@ -26,7 +26,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-use crate::{config::config, updater::updater_langchain::SimpleLLMUpdater};
+use crate::{config::config, updater::updater_simple_llm::SimpleLLMUpdater};
 
 #[async_trait]
 pub trait IBotwafUpdater: Send + Sync {

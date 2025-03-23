@@ -52,7 +52,7 @@ pub struct SimpleLLMUpdater {
 }
 
 impl SimpleLLMUpdater {
-    pub const KIND: &'static str = "SIMPLE_LANGCHAIN";
+    pub const KIND: &'static str = "SIMPLE_LLM";
 
     pub async fn new(config: &UpdaterProperties) -> Arc<Self> {
         // Create the embedding openai config.

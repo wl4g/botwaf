@@ -20,4 +20,4 @@
 
 pub mod updater;
 pub mod updater_base;
-pub mod updater_langchain;
+pub mod updater_simple_llm;
