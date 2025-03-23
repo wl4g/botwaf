@@ -252,6 +252,10 @@ pub struct EmbeddingLLMProperties {
     pub project_id: Option<String>,
     #[serde(rename = "model")]
     pub model: String,
+    #[serde(rename = "pre-delete-collection")]
+    pub pre_delete_collection: bool,
+    #[serde(rename = "vector-dimensions")]
+    pub vector_dimensions: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -266,6 +270,16 @@ pub struct GenerateLLMProperties {
     pub project_id: Option<String>,
     #[serde(rename = "model")]
     pub model: String,
+    #[serde(rename = "max-tokens")]
+    pub max_tokens: u32,
+    #[serde(rename = "temperature")]
+    pub temperature: f32,
+    #[serde(rename = "candidate-count")]
+    pub candidate_count: usize,
+    #[serde(rename = "top-k")]
+    pub top_k: usize,
+    #[serde(rename = "top-p")]
+    pub top_p: f32,
     #[serde(rename = "system-prompt")]
     pub system_prompt: String,
 }
@@ -501,6 +515,8 @@ impl Default for EmbeddingLLMProperties {
             org_id: None,
             project_id: None,
             model: String::from("bge-m3:latest"),
+            pre_delete_collection: false,
+            vector_dimensions: 1536,
         }
     }
 }
@@ -513,6 +529,11 @@ impl Default for GenerateLLMProperties {
             org_id: None,
             project_id: None,
             model: String::from("qwen-plus"),
+            max_tokens: 65535,
+            candidate_count: 1,
+            temperature: 0.1,
+            top_k: 1,
+            top_p: 1.0,
             system_prompt: String::from(
                 "You are a security expert.\n\
                  You are given a list of rules and a request.\n\

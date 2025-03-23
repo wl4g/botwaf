@@ -67,12 +67,20 @@ impl LangchainLLMHandler {
             embedding_openai_config = embedding_openai_config.with_org_id(project_id);
         }
 
+        let pgconn_url = format!(
+            "postgresql://{}:{}@{}:{}/{}?schema={}",
+            config::CFG.database.vectordb.username,
+            config::CFG.database.vectordb.password.to_owned().unwrap_or_default(),
+            config::CFG.database.vectordb.host,
+            config::CFG.database.vectordb.port,
+            config::CFG.database.vectordb.database,
+            config::CFG.database.vectordb.schema,
+        );
         // Create the knowledge vector store for PG vector.
         let pgvec_store = StoreBuilder::new()
             .embedder(OpenAiEmbedder::new(embedding_openai_config))
-            .pre_delete_collection(true)
-            // TODO:
-            .connection_url("postgresql://postgres:postgres@localhost:5432/postgres")
+            .pre_delete_collection(false)
+            .connection_url(pgconn_url.as_str())
             .vector_dimensions(1536)
             .build()
             .await
@@ -91,18 +99,20 @@ impl LangchainLLMHandler {
         }
 
         // Create the call LLM client for openai compability.
-        // TODO: Should be used configuration.
-        let opts = CallOptions::new()
-            .with_max_tokens(65535)
-            .with_temperature(0.1) // TODO: Should be as low as possible?
-            .with_candidate_count(3) // TODO:
-            // .with_functions(Vec::new()) // TODO:
-            // .with_stop_words(Vec::new()) // TODO:
-            // .with_top_k(3) // TODO:
-            // .with_top_p(0.5 as f32) // TODO:
-            // .with_seed(0) // TODO:
+        let call_opts = CallOptions::new()
+            .with_max_tokens(config::CFG.botwaf.llm.generate.max_tokens)
+            .with_temperature(config::CFG.botwaf.llm.generate.temperature)
+            .with_candidate_count(config::CFG.botwaf.llm.generate.candidate_count)
+            // TODO: whether the support configuration of this items?
+            // .with_functions(Vec::new())
+            // .with_stop_words(Vec::new())
+            .with_top_k(config::CFG.botwaf.llm.generate.top_k)
+            .with_top_p(config::CFG.botwaf.llm.generate.top_p)
+            // .with_seed(0)
             .with_function_call_behavior(FunctionCallBehavior::Auto);
-        let openai_llm = OpenAI::new(call_openai_config).with_model("model").with_options(opts);
+        let openai_llm = OpenAI::new(call_openai_config)
+            .with_model(config::CFG.botwaf.llm.generate.model.to_owned())
+            .with_options(call_opts);
 
         // Create the this updater handler instance.
         Self {

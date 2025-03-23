@@ -116,6 +116,8 @@ botwaf:
       model: "bge-m3:latest"
       org-id: # Optional
       project-id: # Optional
+      pre_delete_collection: false
+      vector_dimensions: 1536
     generate:
       # Notice: The '__' should be used to distinguish different levels of structure properties, such as:
       # BOTWAF__LLM__API_KEY to match BotwafProperties{llm:LlmProperties{completion:GenerateProperties{api_key}}}
@@ -124,6 +126,11 @@ botwaf:
       org-id: # Optional
       project-id: # Optional
       model: "qwen-plus"
+      max-tokens: 65535
+      temperature: 0.1
+      candidate-count: 3
+      top-k: 1
+      top-p: 0.9
       system-prompt: |-
         You are a security expert.
         You are given a list of rules and a request.
