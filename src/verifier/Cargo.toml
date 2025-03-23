@@ -1,0 +1,49 @@
+[package]
+name = "botwaf-verifier"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# Other modules dependencies.
+botwaf-server.workspace = true
+botwaf-types.workspace = true
+botwaf-utils.workspace = true
+# Thirdparty dependencies.
+axum.workspace = true
+hyper.workspace = true
+lazy_static.workspace = true
+clap.workspace = true
+modsecurity.workspace = true
+serde.workspace = true
+validator.workspace = true
+tokio.workspace = true
+tokio-cron-scheduler.workspace = true
+tower.workspace = true
+config.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+async-trait.workspace = true
+reqwest.workspace = true
+anyhow.workspace = true
+dotenv.workspace = true
+tracing-subscriber.workspace = true
+thiserror.workspace = true
+serde_json.workspace = true
+regex.workspace = true
+moka.workspace = true
+redis.workspace = true
+sqlx.workspace = true
+openai.workspace = true
+langchain-rust.workspace = true
+pgvector.workspace = true
+openapi.workspace = true
+utoipa.workspace = true
+utoipa-swagger-ui.workspace = true
+url.workspace = true
+
+[build-dependencies]
+chrono.workspace = true

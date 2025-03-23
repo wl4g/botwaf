@@ -1,0 +1,23 @@
+[package]
+name = "botwaf-standalone"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# Other modules dependencies.
+botwaf-server.workspace = true
+botwaf-updater.workspace = true
+botwaf-verifier.workspace = true
+botwaf-utils.workspace = true
+# Thirdparty dependencies.
+tokio.workspace = true
+axum.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+
+[build-dependencies]
+chrono.workspace = true
