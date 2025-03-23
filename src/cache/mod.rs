@@ -18,12 +18,10 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::collections::HashMap;
-
+use crate::config::config::{AppConfigProperties, CacheProvider};
 use anyhow::Error;
 use async_trait::async_trait;
-
-use crate::config::config::{AppConfigProperties, CacheProvider};
+use std::collections::HashMap;
 
 pub mod memory;
 pub mod redis;
@@ -80,7 +78,10 @@ where
     T: 'static + Send + Sync,
 {
     pub fn new(memory_cache: Box<dyn ICache<T>>, redis_cache: Box<dyn ICache<T>>) -> Self {
-        CacheContainer { memory_cache, redis_cache }
+        CacheContainer {
+            memory_cache,
+            redis_cache,
+        }
     }
 
     fn memory_cache(&self) -> &dyn ICache<T> {
@@ -93,8 +94,8 @@ where
 
     pub fn get(&self, config: &AppConfigProperties) -> &dyn ICache<T> {
         match config.cache.provider {
-            CacheProvider::Memory => self.memory_cache(),
-            CacheProvider::Redis => self.redis_cache(),
+            CacheProvider::MEMORY => self.memory_cache(),
+            CacheProvider::REDIS => self.redis_cache(),
         }
     }
 }

@@ -18,7 +18,7 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::{env, sync::Arc};
+use std::{env, ops::Deref, sync::Arc};
 
 use crate::logging::logging::LogMode;
 use config::Config;
@@ -55,6 +55,8 @@ pub struct AppConfigProperties {
     pub logging: LoggingProperties,
     #[serde(default = "CacheProperties::default")]
     pub cache: CacheProperties,
+    #[serde(default = "DatabaseProperties::default")]
+    pub database: DatabaseProperties,
     #[serde(default = "BotwafProperties::default")]
     pub botwaf: BotwafProperties,
 }
@@ -93,27 +95,6 @@ pub struct LoggingProperties {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct BotwafProperties {
-    // Notice: Nginx support status code range: 300-599.
-    #[serde(rename = "blocked-status-code")]
-    pub blocked_status_code: Option<u16>,
-    #[serde(rename = "blocked-header-name")]
-    pub blocked_header_name: String,
-    #[serde(rename = "allow-addition-modsec-info")]
-    pub allow_addition_modsec_info: bool,
-    #[serde(rename = "static-rules")]
-    pub static_rules: Vec<StaticRule>,
-    #[serde(rename = "updaters")]
-    pub updaters: Vec<UpdaterProperties>,
-    #[serde(rename = "verifiers")]
-    pub verifiers: Vec<VerifierProperties>,
-    #[serde(rename = "llm", default = "LlmProperties::default")]
-    pub llm: LlmProperties,
-    #[serde(rename = "forward", default = "ForwardProperties::default")]
-    pub forward: ForwardProperties,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CacheProperties {
     pub provider: CacheProvider,
     pub memory: MemoryProperties,
@@ -122,8 +103,8 @@ pub struct CacheProperties {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum CacheProvider {
-    Memory,
-    Redis,
+    MEMORY,
+    REDIS,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -156,12 +137,66 @@ pub struct RedisProperties {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct StaticRule {
-    pub name: String,
-    pub kind: String, // Notice: Currently only support "RAW"
-    pub severity: String,
-    pub desc: String,
-    pub value: String,
+pub struct DatabaseProperties {
+    #[serde(rename = "systemdb", default = "SystemDBProperties::default")]
+    pub systemdb: SystemDBProperties,
+    #[serde(rename = "vectorpg", default = "PgVectorProperties::default")]
+    pub vectordb: PgVectorProperties,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PostgresProperties {
+    #[serde(rename = "host")]
+    pub host: String,
+    #[serde(rename = "port")]
+    pub port: u16,
+    #[serde(rename = "database")]
+    pub database: String,
+    #[serde(rename = "schema")]
+    pub schema: String,
+    #[serde(rename = "username")]
+    pub username: String,
+    #[serde(rename = "password")]
+    pub password: Option<String>,
+    #[serde(rename = "min-connections")]
+    pub min_connections: Option<u32>,
+    #[serde(rename = "max-connections")]
+    pub max_connections: Option<u32>,
+    #[serde(rename = "use-ssl")]
+    pub use_ssl: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SystemDBProperties {
+    #[serde(flatten)]
+    pub inner: PostgresProperties,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PgVectorProperties {
+    #[serde(flatten)]
+    pub inner: PostgresProperties,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BotwafProperties {
+    // Notice: Nginx support status code range: 300-599.
+    #[serde(rename = "blocked-status-code")]
+    pub blocked_status_code: Option<u16>,
+    #[serde(rename = "blocked-header-name")]
+    pub blocked_header_name: String,
+    #[serde(rename = "allow-addition-modsec-info")]
+    pub allow_addition_modsec_info: bool,
+    #[serde(rename = "static-rules")]
+    pub static_rules: Vec<StaticRule>,
+    #[serde(rename = "updaters")]
+    pub updaters: Vec<UpdaterProperties>,
+    #[serde(rename = "verifiers")]
+    pub verifiers: Vec<VerifierProperties>,
+    #[serde(rename = "llm", default = "LlmProperties::default")]
+    pub llm: LlmProperties,
+    #[serde(rename = "forward", default = "ForwardProperties::default")]
+    pub forward: ForwardProperties,
 }
 
 /// ModSec rules updater based LLM, and similar design as k8s multi specification controller implementation.
@@ -200,13 +235,13 @@ pub struct LlmProperties {
     // see:https://github.com/ollama/ollama/blob/main/docs/api.md#generate-a-completion
     // see:https://help.aliyun.com/zh/model-studio/getting-started/what-is-model-studio#16693d2e3fmir
     #[serde(rename = "embedding")]
-    pub embedding: EmbeddingProperties,
+    pub embedding: EmbeddingLLMProperties,
     #[serde(rename = "generate")]
-    pub generate: GenerateProperties,
+    pub generate: GenerateLLMProperties,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct EmbeddingProperties {
+pub struct EmbeddingLLMProperties {
     #[serde(rename = "api-uri")]
     pub api_uri: String,
     #[serde(rename = "api-key")]
@@ -220,7 +255,7 @@ pub struct EmbeddingProperties {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct GenerateProperties {
+pub struct GenerateLLMProperties {
     #[serde(rename = "api-uri")]
     pub api_uri: String,
     #[serde(rename = "api-key")]
@@ -254,6 +289,15 @@ pub struct ForwardProperties {
     pub upstream_destination_header_name: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StaticRule {
+    pub name: String,
+    pub kind: String, // Notice: Currently only support "RAW"
+    pub severity: String,
+    pub desc: String,
+    pub value: String,
+}
+
 impl AppConfigProperties {
     pub fn default() -> AppConfigProperties {
         AppConfigProperties {
@@ -262,6 +306,7 @@ impl AppConfigProperties {
             swagger: SwaggerProperties::default(),
             logging: LoggingProperties::default(),
             cache: CacheProperties::default(),
+            database: DatabaseProperties::default(),
             botwaf: BotwafProperties::default(),
         }
     }
@@ -300,7 +345,7 @@ impl Default for SwaggerProperties {
 impl Default for LoggingProperties {
     fn default() -> Self {
         LoggingProperties {
-            mode: LogMode::Json,
+            mode: LogMode::JSON,
             level: "info".to_string(),
         }
     }
@@ -309,7 +354,7 @@ impl Default for LoggingProperties {
 impl Default for CacheProperties {
     fn default() -> Self {
         CacheProperties {
-            provider: CacheProvider::Memory,
+            provider: CacheProvider::MEMORY,
             memory: MemoryProperties::default(),
             redis: RedisProperties::default(),
         }
@@ -340,6 +385,63 @@ impl Default for RedisProperties {
             min_retry_wait: Some(1280),
             read_from_replicas: Some(false),
         }
+    }
+}
+
+impl Default for DatabaseProperties {
+    fn default() -> Self {
+        DatabaseProperties {
+            systemdb: SystemDBProperties::default(),
+            vectordb: PgVectorProperties::default(),
+        }
+    }
+}
+
+impl Default for PostgresProperties {
+    fn default() -> Self {
+        PostgresProperties {
+            host: String::from("127.0.0.1"),
+            port: 5432,
+            database: String::from("botwaf"),
+            schema: String::from("botwaf"),
+            username: String::from("postgres"),
+            password: None,
+            min_connections: Some(1),
+            max_connections: Some(10),
+            use_ssl: false,
+        }
+    }
+}
+
+impl Default for SystemDBProperties {
+    fn default() -> Self {
+        SystemDBProperties {
+            inner: PostgresProperties::default(),
+        }
+    }
+}
+
+impl Deref for SystemDBProperties {
+    type Target = PostgresProperties;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl Default for PgVectorProperties {
+    fn default() -> Self {
+        PgVectorProperties {
+            inner: PostgresProperties::default(),
+        }
+    }
+}
+
+impl Deref for PgVectorProperties {
+    type Target = PostgresProperties;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
@@ -385,15 +487,15 @@ impl Default for VerifierProperties {
 impl Default for LlmProperties {
     fn default() -> Self {
         LlmProperties {
-            embedding: EmbeddingProperties::default(),
-            generate: GenerateProperties::default(),
+            embedding: EmbeddingLLMProperties::default(),
+            generate: GenerateLLMProperties::default(),
         }
     }
 }
 
-impl Default for EmbeddingProperties {
+impl Default for EmbeddingLLMProperties {
     fn default() -> Self {
-        EmbeddingProperties {
+        EmbeddingLLMProperties {
             api_uri: String::from("https://dashscope.aliyuncs.com/compatible-mode/v1"),
             api_key: None,
             org_id: None,
@@ -403,9 +505,9 @@ impl Default for EmbeddingProperties {
     }
 }
 
-impl Default for GenerateProperties {
+impl Default for GenerateLLMProperties {
     fn default() -> Self {
-        GenerateProperties {
+        GenerateLLMProperties {
             api_uri: String::from("https://dashscope.aliyuncs.com/compatible-mode/v1"),
             api_key: None,
             org_id: None,
@@ -469,6 +571,7 @@ fn init() -> Arc<AppConfigProperties> {
             serde_json::to_string(config.as_ref()).unwrap()
         );
     }
+
     return config;
 }
 

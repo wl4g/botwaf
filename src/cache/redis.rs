@@ -18,6 +18,8 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use super::ICache;
+use crate::config::config::RedisProperties;
 use anyhow::Error;
 use async_trait::async_trait;
 use redis::{
@@ -26,10 +28,6 @@ use redis::{
     RedisResult,
 };
 use std::{collections::HashMap, sync::Arc, time::Duration};
-
-use crate::config::config::RedisProperties;
-
-use super::ICache;
 
 pub struct StringRedisCache {
     client: Arc<ClusterClient>,
@@ -68,7 +66,9 @@ impl StringRedisCache {
 
         tracing::info!("Initialized the redis with config: {:?}", config);
 
-        StringRedisCache { client: Arc::new(client) }
+        StringRedisCache {
+            client: Arc::new(client),
+        }
     }
 
     async fn get_async_connection(&self) -> Result<ClusterConnection, Error> {
@@ -87,7 +87,12 @@ impl ICache<String> for StringRedisCache {
     async fn set(&self, key: String, value: String, seonds: Option<i32>) -> Result<bool, Error> {
         let mut con = self.get_async_connection().await?;
         let result: RedisResult<String> = if let Some(seconds) = seonds {
-            redis::cmd("SETEX").arg(key).arg(seconds).arg(value).query_async(&mut con).await
+            redis::cmd("SETEX")
+                .arg(key)
+                .arg(seconds)
+                .arg(value)
+                .query_async(&mut con)
+                .await
         } else {
             redis::cmd("SET").arg(key).arg(value).query_async(&mut con).await
         };
@@ -118,7 +123,8 @@ impl ICache<String> for StringRedisCache {
 
     async fn hget_all(&self, key: String) -> Result<Option<HashMap<String, String>>, Error> {
         let mut con = self.get_async_connection().await?;
-        let result: RedisResult<Option<HashMap<String, String>>> = redis::cmd("HGETALL").arg(key).query_async(&mut con).await;
+        let result: RedisResult<Option<HashMap<String, String>>> =
+            redis::cmd("HGETALL").arg(key).query_async(&mut con).await;
         Ok(result?)
     }
 

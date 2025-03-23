@@ -18,18 +18,15 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use crate::config::config;
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Display},
     io::LineWriter,
     str::FromStr,
 };
-
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{filter::Targets, EnvFilter, Layer};
-
-use serde::{Deserialize, Serialize};
-
-use crate::config::config;
 
 pub type LogRouteHandle = tracing_subscriber::reload::Handle<LogRouteType, tracing_subscriber::Registry>;
 
@@ -56,15 +53,15 @@ pub type LogStderrType = tracing_subscriber::filter::Filtered<
 #[serde(rename_all = "UPPERCASE")]
 pub enum LogMode {
     #[default]
-    Human,
-    Json,
+    HUMAN,
+    JSON,
 }
 
 impl Display for LogMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LogMode::Human => Display::fmt("HUMAN", f),
-            LogMode::Json => Display::fmt("JSON", f),
+            LogMode::HUMAN => Display::fmt("HUMAN", f),
+            LogMode::JSON => Display::fmt("JSON", f),
         }
     }
 }
@@ -74,8 +71,8 @@ impl FromStr for LogMode {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.trim().to_lowercase().as_str() {
-            "human" => Ok(LogMode::Human),
-            "json" => Ok(LogMode::Json),
+            "human" => Ok(LogMode::HUMAN),
+            "json" => Ok(LogMode::JSON),
             _ => Err(LogModeError(s.to_owned())),
         }
     }
@@ -157,13 +154,16 @@ pub(super) fn default_log_stderr_layer() -> LogStderrType {
         .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE);
 
     let layer = match config::CFG.logging.mode {
-        LogMode::Human => Box::new(layer) as Box<dyn tracing_subscriber::Layer<SubscriberForSecondLayer> + Send + Sync>,
-        LogMode::Json => Box::new(layer.json()) as Box<dyn tracing_subscriber::Layer<SubscriberForSecondLayer> + Send + Sync>,
+        LogMode::HUMAN => Box::new(layer) as Box<dyn tracing_subscriber::Layer<SubscriberForSecondLayer> + Send + Sync>,
+        LogMode::JSON => {
+            Box::new(layer.json()) as Box<dyn tracing_subscriber::Layer<SubscriberForSecondLayer> + Send + Sync>
+        }
     };
 
-    layer.with_filter(
-        tracing_subscriber::filter::Targets::new().with_target("", LevelFilter::from_str(&config::CFG.logging.level.to_string()).unwrap()),
-    )
+    layer.with_filter(tracing_subscriber::filter::Targets::new().with_target(
+        "",
+        LevelFilter::from_str(&config::CFG.logging.level.to_string()).unwrap(),
+    ))
 }
 
 #[allow(unused)]

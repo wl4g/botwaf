@@ -35,12 +35,12 @@ use tokio::fs::create_dir_all;
 use uuid::Uuid;
 
 pub fn init() -> Router<BotWafState> {
-    Router::new().route("/modules/knowledge/upload", post(handle_knowledge_upload))
+    Router::new().route("/api/v1/knowledge/upload", post(handle_knowledge_upload))
 }
 
 #[utoipa::path(
     post,
-    path = "/modules/knowledge/upload",
+    path = "/api/v1/knowledge/upload",
     request_body = KnowledgeUploadInfo,
     responses((status = 200, description = "Upload Knowledge.", body = KnowledgeUploadInfo)),
     tag = "Knowledge"

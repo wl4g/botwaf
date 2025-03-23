@@ -1,0 +1,122 @@
+x-shared-env: &shared-api-worker-env
+  SWAGGER__ENABLED: ${SWAGGER_ENABLED:-true}
+  LOGGING__MODE: ${LOGGING_MODE:-JSON}
+  LOGGING__LEVEL: ${LOGGING_LEVEL:-DEBUG}
+  CACHE__PROVIDER: ${CACHE_PROVIDER:-Redis}
+  CACHE__REDIS__NODES: ${REDIS_NODES:-redis://127.0.0.1:6379}
+  CACHE__REDIS__PASSWORD: ${REDIS_PASSWORD:-}
+  DATABASE__SYSTEMDB__HOST: ${POSTGRES_HOST:-pgvector}
+  DATABASE__SYSTEMDB__PORT: ${POSTGRES_PORT:-5432}
+  DATABASE__SYSTEMDB__USER: ${POSTGRES_USER:-postgres}
+  DATABASE__SYSTEMDB__PASSWORD: ${POSTGRES_PASSWORD:-changeit}
+  DATABASE__SYSTEMDB__DATABASE: ${POSTGRES_DATABASE:-botwaf}
+  DATABASE__SYSTEMDB__MIN_CONNECTION: ${POSTGRES_MIN_CONNECTION:-1}
+  DATABASE__SYSTEMDB__MAX_CONNECTION: ${POSTGRES_MAX_CONNECTION:-10}
+  DATABASE__PGVECTOR__HOST: ${POSTGRES_HOST:-pgvector}
+  DATABASE__PGVECTOR__PORT: ${POSTGRES_PORT:-5432}
+  DATABASE__PGVECTOR__USER: ${POSTGRES_USER:-postgres}
+  DATABASE__PGVECTOR__PASSWORD: ${POSTGRES_PASSWORD:-changeit}
+  DATABASE__PGVECTOR__DATABASE: ${POSTGRES_DATABASE:-botwaf}
+  DATABASE__PGVECTOR__MIN_CONNECTION: ${POSTGRES_MIN_CONNECTION:-1}
+  DATABASE__PGVECTOR__MAX_CONNECTION: ${POSTGRES_MAX_CONNECTION:-10}
+  BOTWAF__LLM__EMBEDDING__API_KEY: ${BOTWAF_LLM_EMBEDDING_API_KEY}
+  BOTWAF__LLM__EMBEDDING__MODEL: ${BOTWAF_LLM_EMBEDDING_MODEL}
+  BOTWAF__LLM__GENERATE__API_KEY: ${BOTWAF_LLM_GENERATE_API_KEY}
+  BOTWAF__LLM__GENERATE__MODEL: ${BOTWAF_LLM_GENERATE_MODEL}
+  BOTWAF__FORWARDER__MAX_BODY_BYTES: ${BOTWAF_FORWADER_MAX_BODY_BYTES:-65535}
+  BOTWAF__FORWARDER__CONNECT_TIMEOUT: ${BOTWAF_FORWADER_CONNECT_TIMEOUT:-5}
+  BOTWAF__FORWARDER__READ_TIMEOUT: ${BOTWAF_FORWADER_READ_TIMEOUT:-10}
+  BOTWAF__FORWARDER__TOTAL_TIMEOUT: ${BOTWAF_FORWADER_TOTAL_TIMEOUT:-15}
+
+services:
+  systemdb:
+    image: registry.cn-shenzhen.aliyuncs.com/wl4g/pgvector_pgvector:pg16
+    profiles:
+      - pgvector
+    restart: unless-stopped
+    environment:
+      PGUSER: ${DATABASE__SYSTEMDB__USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE__SYSTEMDB__PASSWORD:-changeit}
+      POSTGRES_DB: ${DATABASE__SYSTEMDB__DATABASE:-botwaf_sysdb}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - /Volumes/disk1/botwaf/systemdb/data:/var/lib/postgresql/data
+    networks:
+      - botwaf
+    healthcheck:
+      test: [ 'CMD', 'pg_isready' ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  pgvector:
+    image: registry.cn-shenzhen.aliyuncs.com/wl4g/pgvector_pgvector:pg16
+    profiles:
+      - pgvector
+    restart: unless-stopped
+    environment:
+      PGUSER: ${DATABASE__PGVECTOR__USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE__PGVECTOR__PASSWORD:-changeit}
+      POSTGRES_DB: ${DATABASE__PGVECTOR__DATABASE:-botwaf_vecdb}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - /Volumes/disk1/botwaf/vectordb/data:/var/lib/postgresql/data
+    networks:
+      - botwaf
+    healthcheck:
+      test: [ 'CMD', 'pg_isready' ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  serve:
+    image: registry.cn-shenzhen.aliyuncs.com/wl4g/botwaf:latest
+    restart: unless-stopped
+    command: serve
+    ports:
+      - 9999:9999
+    environment:
+      <<: *x-shared-env
+    depends_on:
+      - pgvector
+      - redis
+    volumes:
+      # Mount the storage directory to the container, for example system tmp and storing user files.
+      - /Volumes/disk1/botwaf/storage:/var/lib/botwaf/storage
+    networks:
+      - botwaf
+
+  updater:
+    image: registry.cn-shenzhen.aliyuncs.com/wl4g/botwaf:latest
+    restart: unless-stopped
+    command: updater
+    environment:
+      <<: *x-shared-env
+    depends_on:
+      - pgvector
+      - redis
+    volumes:
+      # Mount the storage directory to the container, for example system tmp and storing user files.
+      - /Volumes/disk1/botwaf/storage:/var/lib/botwaf/storage
+    networks:
+      - botwaf
+
+  verifier:
+    image: registry.cn-shenzhen.aliyuncs.com/wl4g/botwaf:latest
+    restart: unless-stopped
+    command: updater
+    environment:
+      <<: *x-shared-env
+    depends_on:
+      - pgvector
+      - redis
+    volumes:
+      # Mount the storage directory to the container, for example system tmp and storing user files.
+      - /Volumes/disk1/botwaf/storage:/var/lib/botwaf/storage
+    networks:
+      - botwaf
+
+networks:
+  botwaf:
+    driver: bridge
+    internal: true
