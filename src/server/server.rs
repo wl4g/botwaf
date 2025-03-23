@@ -26,7 +26,7 @@ use crate::{
     },
     handler::{llm_handler::ILLMHandler, llm_handler_langchain::LangchainLLMHandler},
     logging,
-    server::{forwarder::IForwarder, forwarder_http::HttpForwardHandler},
+    server::forwarder_http::HttpForwardHandler,
     types::server::HttpIncomingRequest,
 };
 use anyhow::{Error, Ok};
@@ -44,13 +44,12 @@ use std::{env, sync::Arc};
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 
-use super::{ipfilter::IPFilterManager, ipfilter_redis::RedisIPFilter};
+use super::{forwarder::ForwarderManager, ipfilter::IPFilterManager, ipfilter_redis::RedisIPFilter};
 
 #[derive(Clone)]
 pub struct BotWafState {
     pub modsec_engine: Arc<ModSecurity>,
     pub modsec_rules: Arc<Rules>,
-    pub forwarder: Arc<dyn IForwarder + Send + Sync>,
     pub llm_handler: Arc<dyn ILLMHandler + Send + Sync>,
 }
 
@@ -75,7 +74,6 @@ impl BotWafState {
         BotWafState {
             modsec_engine,
             modsec_rules,
-            forwarder: Arc::new(HttpForwardHandler::new()),
             llm_handler: Arc::new(LangchainLLMHandler::new().await),
         }
     }
@@ -93,8 +91,10 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
     let incoming = HttpIncomingRequest::new(req).await;
 
     // Obtain the available IP filter instance.
-    let ipfilter = IPFilterManager::get_implementation(RedisIPFilter::NAME.to_owned())
-        .expect("Failed to get IP filter implementation.");
+    let ipfilter = IPFilterManager::get_implementation(RedisIPFilter::NAME.to_owned()).expect(&format!(
+        "Failed to get IP filter implementation with {}.",
+        RedisIPFilter::NAME.to_owned()
+    ));
 
     // Check if the request client IP address is blocked.
     if ipfilter.is_blocked(incoming.to_owned()).await.unwrap_or(false) {
@@ -171,7 +171,11 @@ async fn botwaf_middleware(State(state): State<BotWafState>, req: Request<Body>,
     }
 
     // Forwarding request to the upstream servers.
-    match state.forwarder.http_forward(incoming.to_owned()).await {
+    let forwarder = ForwarderManager::get_implementation(HttpForwardHandler::NAME.to_owned()).expect(&format!(
+        "Failed to get forwarder implementation with {}.",
+        HttpForwardHandler::NAME.to_owned()
+    ));
+    match forwarder.http_forward(incoming.to_owned()).await {
         std::result::Result::Ok(response) => {
             tracing::info!("[BotWaf] [Forwarded] - {}", &incoming.path);
             response

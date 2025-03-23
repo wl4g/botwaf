@@ -35,7 +35,9 @@ pub struct HttpForwardHandler {
 }
 
 impl HttpForwardHandler {
-    pub fn new() -> Self {
+    pub const NAME: &'static str = "http_forward";
+
+    pub fn new() -> Arc<Self> {
         let mut builder = reqwest::ClientBuilder::new()
             .connect_timeout(Duration::from_secs(config::CFG.botwaf.forward.connect_timeout))
             .read_timeout(Duration::from_secs(config::CFG.botwaf.forward.read_timeout))
@@ -44,9 +46,9 @@ impl HttpForwardHandler {
         if let Some(proxy) = &config::CFG.botwaf.forward.http_proxy {
             builder = builder.proxy(Proxy::http(proxy).expect("parse http proxy addr error"));
         }
-        Self {
+        Arc::new(Self {
             client: builder.build().expect("build http client error"),
-        }
+        })
     }
 
     // Extract the upstream URL from the request headers.
@@ -153,6 +155,10 @@ impl HttpForwardHandler {
 
 #[async_trait]
 impl IForwarder for HttpForwardHandler {
+    async fn init(&self) -> Result<()> {
+        Ok(())
+    }
+
     #[allow(unused)]
     async fn http_forward(&self, incoming: Arc<HttpIncomingRequest>) -> Result<Response<Body>> {
         match self.get_upstream_url(incoming.to_owned()) {

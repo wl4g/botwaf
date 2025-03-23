@@ -29,20 +29,6 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-lazy_static! {
-    /// RwLock 的锁机制规则:
-    ///   读锁(共享锁):
-    ///     允许多个线程同时持有读锁。
-    ///     读锁之间不会互相阻塞，所有读锁持有者可以并发读取数据。
-    ///   写锁(独占锁):
-    ///     只有一个线程可以持有写锁。
-    ///     写锁会阻塞所有其他线程的读锁和写锁请求，直到写锁释放。
-    ///   读写锁的互斥规则:
-    ///     当一个线程持有写锁时，其他线程无法获取读锁或写锁。
-    ///     当一个或多个线程持有读锁时，其他线程无法获取写锁。
-    static ref SINGLE_INSTANCE: RwLock<IPFilterManager> = RwLock::new(IPFilterManager::new());
-}
-
 #[async_trait::async_trait]
 pub trait IPFilter {
     /// Initialization.
@@ -56,6 +42,20 @@ pub trait IPFilter {
 
     /// Removes an IP address from the blacklist
     async fn unblock_ip(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error>;
+}
+
+lazy_static! {
+    /// RwLock Notices:
+    /// Read lock (shared lock):
+    /// Allow multiple threads to hold read locks at the same time.
+    /// Read locks will not block each other, and all read lock holders can read data concurrently.
+    /// Write lock (exclusive lock):
+    /// Only one thread can hold a write lock.
+    /// The write lock will block all other threads' read-write lock requests until the write lock is released.
+    /// Mutual exclusion rules for read-write locks:
+    /// When a thread holds a write lock, other threads cannot obtain read or write locks. ---Therefore, the phantom read problem of the database is avoided
+    /// When one or more threads hold a read lock, other threads cannot obtain a write lock. ---Therefore, RwLock is only suitable for scenarios with more reads and less writes, such as cache systems, configuration file reading, etc.
+    static ref SINGLE_INSTANCE: RwLock<IPFilterManager> = RwLock::new(IPFilterManager::new());
 }
 
 pub struct IPFilterManager {
@@ -105,7 +105,8 @@ impl IPFilterManager {
     }
 
     pub fn get_implementation(name: String) -> Result<Arc<dyn IPFilter + Send + Sync>, Error> {
-        let this = IPFilterManager::get().read().unwrap(); // If the read lock is poisoned, the program will panic.
+        // If the read lock is poisoned, the program will panic.
+        let this = IPFilterManager::get().read().unwrap();
         if let Some(implementation) = this.implementations.get(&name) {
             Ok(implementation.to_owned())
         } else {
