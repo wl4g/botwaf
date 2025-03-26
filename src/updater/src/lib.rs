@@ -18,6 +18,5 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-pub mod updater;
 pub mod updater_base;
 pub mod updater_simple_llm;

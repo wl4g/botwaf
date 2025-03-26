@@ -18,12 +18,12 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use super::{BaseBean, PageResponse};
 use common_makestruct::MakeStructWith;
-use sqlx::{ FromRow, sqlite::SqliteRow, Row };
-use serde::{ Deserialize, Serialize };
+use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgRow;
+use sqlx::{sqlite::SqliteRow, FromRow, Row};
 use validator::Validate;
-
-use super::{ BaseBean, PageResponse };
 
 // Manual impl for decode.
 // #[derive(Serialize, Deserialize, Clone, Debug, sqlx::sqlite::FromRow, sqlx::sqlite::Decode)]
@@ -71,10 +71,36 @@ impl Default for User {
     }
 }
 
+/// SqliteRow impl for User.
 impl<'r> FromRow<'r, SqliteRow> for User {
     fn from_row(row: &'r SqliteRow) -> Result<Self, sqlx::Error> {
         Ok(User {
             base: BaseBean::from_row(row).unwrap(),
+            name: row.try_get("name")?,
+            email: row.try_get("email")?,
+            phone: row.try_get("phone")?,
+            password: row.try_get("password")?,
+            oidc_claims_sub: row.try_get("oidc_claims_sub")?,
+            oidc_claims_name: row.try_get("oidc_claims_name")?,
+            oidc_claims_email: row.try_get("oidc_claims_email")?,
+            github_claims_sub: row.try_get("github_claims_sub")?,
+            github_claims_name: row.try_get("github_claims_name")?,
+            github_claims_email: row.try_get("github_claims_email")?,
+            google_claims_sub: row.try_get("google_claims_sub")?,
+            google_claims_name: row.try_get("google_claims_name")?,
+            google_claims_email: row.try_get("google_claims_email")?,
+            ethers_address: row.try_get("ethers_address")?,
+            lang: row.try_get("lang")?,
+        })
+    }
+}
+
+/// Postgres Row impl for User.
+
+impl<'r> FromRow<'r, PgRow> for User {
+    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
+        Ok(User {
+            base: BaseBean::from_row(row)?,
             name: row.try_get("name")?,
             email: row.try_get("email")?,
             phone: row.try_get("phone")?,
@@ -101,8 +127,7 @@ impl<'r> FromRow<'r, SqliteRow> for User {
     PartialEq,
     Validate,
     utoipa::ToSchema,
-    utoipa::IntoParams
-    // PageableQueryRequest // Try using macro auto generated pageable query request.
+    utoipa::IntoParams, // PageableQueryRequest // Try using macro auto generated pageable query request.
 )]
 #[into_params(parameter_in = Query)]
 pub struct QueryUserRequest {
@@ -172,19 +197,14 @@ pub struct QueryUserResponse {
 
 impl QueryUserResponse {
     pub fn new(page: PageResponse, data: Vec<User>) -> Self {
-        QueryUserResponse { page: Some(page), data: Some(data) }
+        QueryUserResponse {
+            page: Some(page),
+            data: Some(data),
+        }
     }
 }
 
-#[derive(
-    Deserialize,
-    Clone,
-    Debug,
-    PartialEq,
-    Validate,
-    utoipa::ToSchema,
-    MakeStructWith
-)]
+#[derive(Deserialize, Clone, Debug, PartialEq, Validate, utoipa::ToSchema, MakeStructWith)]
 #[excludes(id)]
 // #[smart_copy(target = "SaveUserRequestWith")]
 pub struct SaveUserRequest {

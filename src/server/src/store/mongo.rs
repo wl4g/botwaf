@@ -18,19 +18,16 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use super::AsyncRepository;
+use crate::config::config::MongoAppDBProperties;
+use anyhow::Error;
+use async_trait::async_trait;
+use botwaf_types::{PageRequest, PageResponse};
+use mongodb::options::{ReadConcern, WriteConcern};
+use mongodb::{options::ClientOptions, Client, Database};
 use std::any::Any;
 use std::marker::PhantomData;
 use std::time::Duration;
-
-use anyhow::Error;
-use axum::async_trait;
-
-use mongodb::options::{ ReadConcern, WriteConcern };
-use mongodb::{ Client, Database, options::ClientOptions };
-
-use super::AsyncRepository;
-use crate::config::config::DbProperties;
-use server_types::{ PageResponse, PageRequest };
 
 pub struct MongoRepository<T: Any + Send + Sync> {
     phantom: PhantomData<T>,
@@ -38,20 +35,17 @@ pub struct MongoRepository<T: Any + Send + Sync> {
 }
 
 impl<T: Any + Send + Sync> MongoRepository<T> {
-    pub async fn new(config: &DbProperties) -> Result<Self, Error> {
-        let mut client_options = ClientOptions::parse(
-            &config.mongo.url.to_owned().expect("Mongo url missing configured")
-        ).await?;
+    pub async fn new(config: &MongoAppDBProperties) -> Result<Self, Error> {
+        let mut client_options =
+            ClientOptions::parse(&config.url.to_owned().expect("Mongo url missing configured")).await?;
         client_options.connect_timeout = Some(Duration::from_secs(10));
         client_options.server_selection_timeout = Some(Duration::from_secs(30));
         client_options.write_concern = Some(WriteConcern::majority()); // Reliable write
-        // Notice: read concern level 'snapshot' is only valid in a transaction
+                                                                       // Notice: read concern level 'snapshot' is only valid in a transaction
         client_options.read_concern = Some(ReadConcern::local());
 
         let client = Client::with_options(client_options)?;
-        let database = client.database(
-            &config.mongo.database.to_owned().expect("Mongo database missing configured")
-        );
+        let database = client.database(&config.database.to_owned().expect("Mongo database missing configured"));
         Ok(MongoRepository {
             phantom: PhantomData,
             database,
@@ -66,11 +60,7 @@ impl<T: Any + Send + Sync> MongoRepository<T> {
 #[allow(unused)]
 #[async_trait]
 impl<T: Any + Send + Sync> AsyncRepository<T> for MongoRepository<T> {
-    async fn select(
-        &self,
-        mut param: T,
-        page: PageRequest
-    ) -> Result<(PageResponse, Vec<T>), Error> {
+    async fn select(&self, mut param: T, page: PageRequest) -> Result<(PageResponse, Vec<T>), Error> {
         //use crate::dynamic_mongo_query;
         //match dynamic_mongo_query!(param, self.database.collection("users"), "update_time", page, User) {
         //    Ok(result) => {
@@ -105,64 +95,62 @@ impl<T: Any + Send + Sync> AsyncRepository<T> for MongoRepository<T> {
 
 #[macro_export]
 macro_rules! dynamic_mongo_query {
-    ($bean:expr, $collection:expr, $order_by:expr, $page:expr, $($t:ty),+) => {
-        {
-            use mongodb::bson::{doc, Document};
-            use futures::stream::TryStreamExt;
+    ($bean:expr, $collection:expr, $order_by:expr, $page:expr, $($t:ty),+) => {{
+        use futures::stream::TryStreamExt;
+        use mongodb::bson::{doc, Document};
 
-            let serialized = serde_json::to_value(&$bean).unwrap();
-            let obj = serialized.as_object().unwrap();
+        let serialized = serde_json::to_value(&$bean).unwrap();
+        let obj = serialized.as_object().unwrap();
 
-            let mut filter = Document::new();
-            for (key, value) in obj {
-                if !value.is_null() {
-                    let v = value.as_str().unwrap_or("");
-                    if !v.is_empty() {
-                        filter.insert(key, v);
-                    }
-                }
-            }
-            if let Some(id) = $bean.base.id {
-                filter.insert("id", id);
-            }
-
-            let options = mongodb::options::FindOptions::builder()
-                .skip($page.get_offset() as u64)
-                .limit($page.get_limit() as i64)
-                .sort(doc! { $order_by: -1 })
-                .build();
-
-            // Queries to get total count.
-            let total_count = $collection.count_documents(filter.clone()).await.unwrap();
-
-            // Queries to get data.
-            let cursor = $collection
-                .find(filter)
-                .skip(options.skip.unwrap())
-                .limit(options.limit.unwrap())
-                .sort(options.sort.unwrap()).await?;
-
-            match cursor.try_collect().await {
-                std::result::Result::Ok(result) => {
-                  let page = PageResponse::new(
-                      Some(total_count as i64),
-                      Some($page.get_offset()),
-                      Some($page.get_limit()));
-                    Ok((page, result))
-                },
-                Err(error) => {
-                    Err(error.into())
+        let mut filter = Document::new();
+        for (key, value) in obj {
+            if !value.is_null() {
+                let v = value.as_str().unwrap_or("");
+                if !v.is_empty() {
+                    filter.insert(key, v);
                 }
             }
         }
-    };
+        if let Some(id) = $bean.base.id {
+            filter.insert("id", id);
+        }
+
+        let options = mongodb::options::FindOptions::builder()
+            .skip($page.get_offset() as u64)
+            .limit($page.get_limit() as i64)
+            .sort(doc! { $order_by: -1 })
+            .build();
+
+        // Queries to get total count.
+        let total_count = $collection.count_documents(filter.clone()).await.unwrap();
+
+        // Queries to get data.
+        let cursor = $collection
+            .find(filter)
+            .skip(options.skip.unwrap())
+            .limit(options.limit.unwrap())
+            .sort(options.sort.unwrap())
+            .await?;
+
+        match cursor.try_collect().await {
+            std::result::Result::Ok(result) => {
+                let page = PageResponse::new(
+                    Some(total_count as i64),
+                    Some($page.get_offset()),
+                    Some($page.get_limit()),
+                );
+                Ok((page, result))
+            }
+            Err(error) => Err(error.into()),
+        }
+    }};
 }
 
 #[macro_export]
 macro_rules! dynamic_mongo_insert {
     ($bean:expr, $collection:expr) => {
         {
-            use crate::utils::auths::SecurityContext;
+            use crate::util::auths::SecurityContext;
 
             let insert_by = SecurityContext::get_instance().get_current_uname_for_store().await;
             let id = $bean.base.pre_insert(insert_by).await;
@@ -192,7 +180,7 @@ macro_rules! dynamic_mongo_update {
     ($bean:expr, $collection:expr) => {
         {
             use mongodb::bson::{doc, to_bson, Bson};
-            use crate::utils::auths::SecurityContext;
+            use crate::util::auths::SecurityContext;
 
             let update_by = SecurityContext::get_instance().get_current_uname_for_store().await;
             $bean.base.pre_update(update_by).await;

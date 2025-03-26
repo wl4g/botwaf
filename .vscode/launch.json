@@ -39,11 +39,12 @@
             "env": {
                 "RUST_BACKTRACE": "full",
                 "BOTWAF_CFG_PATH": "${workspaceFolder}/etc/botwaf.yaml",
+                //"SWAGGER_UI_DOWNLOAD_URL": "file:${workspaceFolder}/etc/swagger-ui-5.17.14.zip",
                 //"BOTWAF_CFG_VERBOSE": "true"
             },
             "args": [
-                "standalone"
-                // "serve"
+                // "standalone"
+                "server"
                 // "updater"
                 // "verifier"
             ],

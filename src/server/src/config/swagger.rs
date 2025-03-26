@@ -18,23 +18,20 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use super::config::{self, AppConfig};
+use crate::llm::route::knowledge_router::__path_handle_knowledge_upload;
+use botwaf_types::knowledge::KnowledgeUploadInfo;
 use std::collections::BTreeMap;
-use std::sync::Arc;
-
 use utoipa::openapi::{PathItem, Paths};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-
-use super::config::{self, AppConfigProperties};
-use crate::server::knowledge_router::__path_handle_knowledge_upload;
-use botwaf_types::knowledge::KnowledgeUploadInfo;
 
 #[derive(utoipa::OpenApi)]
 #[openapi(
     info(
         version = "1.0.0",
         title = "Botwaf",
-        description = "The Botwaf",
+        description = "Botwaf - A Mini Open Source AI Bot WAF written in Rust.",
         license(name = "Apache 2.0", url = "https://www.apache.org/licenses/LICENSE-2.0"),
         contact(
             name = "Botwaf",
@@ -62,7 +59,7 @@ struct ApiPathPrefixer;
 
 impl utoipa::Modify for ApiPathPrefixer {
     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-        let ctx_path = &config::CFG.server.context_path;
+        let ctx_path = &config::get_config().server.context_path;
 
         let old_paths = std::mem::take(&mut openapi.paths);
         let mut new_paths_map: BTreeMap<String, PathItem> = old_paths
@@ -86,7 +83,7 @@ impl utoipa::Modify for ApiPathPrefixer {
     }
 }
 
-pub fn init_swagger(config: &Arc<AppConfigProperties>) -> SwaggerUi {
+pub fn init(config: &AppConfig) -> SwaggerUi {
     // Manual build of OpenAPI.
     // use utoipa::openapi::{ ContactBuilder, InfoBuilder, LicenseBuilder, Paths };
     // let info = InfoBuilder::new()
@@ -117,13 +114,13 @@ pub fn init_swagger(config: &Arc<AppConfigProperties>) -> SwaggerUi {
     // Auto build of OpenAPI.
     let openapi = ApiDoc::openapi();
 
-    let swagger_ui_path = join_context_path(config, config.swagger.swagger_ui_path.to_string());
-    let openapi_url = join_context_path(config, config.swagger.swagger_openapi_url.to_string());
+    let swagger_ui_path = join_context_path(&config, config.swagger.ui_path.to_string());
+    let openapi_url = join_context_path(&config, config.swagger.openapi_url.to_string());
 
     SwaggerUi::new(swagger_ui_path).url(openapi_url, openapi)
 }
 
-pub fn join_context_path(config: &AppConfigProperties, path: String) -> String {
+pub fn join_context_path(config: &AppConfig, path: String) -> String {
     // Absolute URI not needs to join context path.
     let schema = url::Url::parse(path.as_str())
         .map(|uri| uri.scheme().to_lowercase())
@@ -131,7 +128,6 @@ pub fn join_context_path(config: &AppConfigProperties, path: String) -> String {
     if schema.starts_with("http") {
         return path;
     }
-
     match &config.server.context_path {
         // Add the prefix context path.
         Some(cp) => format!("{}{}", cp, path),

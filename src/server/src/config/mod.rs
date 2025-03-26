@@ -20,4 +20,5 @@
 
 pub mod config;
 pub mod constant;
+pub mod resources;
 pub mod swagger;

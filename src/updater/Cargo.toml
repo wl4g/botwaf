@@ -40,9 +40,6 @@ sqlx.workspace = true
 openai.workspace = true
 langchain-rust.workspace = true
 pgvector.workspace = true
-openapi.workspace = true
-utoipa.workspace = true
-utoipa-swagger-ui.workspace = true
 url.workspace = true
 
 [build-dependencies]

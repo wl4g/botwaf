@@ -21,7 +21,7 @@
 // use openai::chat::{ChatCompletion, ChatCompletionMessage, ChatCompletionMessageRole};
 use async_trait::async_trait;
 
-use super::updater_base::{BotWafAccessEvent, IBotwafUpdater};
+use super::updater_base::{BotwafAccessEvent, IBotwafUpdater};
 use botwaf_server::config::config::{self, UpdaterProperties};
 use langchain_rust::{
     chain::{Chain, ConversationalRetrieverChainBuilder},
@@ -54,16 +54,17 @@ impl SimpleLLMUpdater {
 
     pub async fn new(config: &UpdaterProperties) -> Arc<Self> {
         // Create the embedding openai config.
-        let mut embed_openai_config = OpenAIConfig::new().with_api_base(&config::CFG.botwaf.llm.embedding.api_uri);
-        if let Some(api_key) = &config::CFG.botwaf.llm.embedding.api_key {
+        let mut embed_openai_config =
+            OpenAIConfig::new().with_api_base(&config::get_config().botwaf.llm.embedding.api_uri);
+        if let Some(api_key) = &config::get_config().botwaf.llm.embedding.api_key {
             // Default used by 'OPENAI_KEY' and 'OPENAI_BASE_URL'.
             // Not require API key to run model by Ollama default.
             embed_openai_config = embed_openai_config.with_api_key(api_key);
         }
-        if let Some(org_id) = &config::CFG.botwaf.llm.embedding.org_id {
+        if let Some(org_id) = &config::get_config().botwaf.llm.embedding.org_id {
             embed_openai_config = embed_openai_config.with_org_id(org_id);
         }
-        if let Some(project_id) = &config::CFG.botwaf.llm.embedding.project_id {
+        if let Some(project_id) = &config::get_config().botwaf.llm.embedding.project_id {
             embed_openai_config = embed_openai_config.with_org_id(project_id);
         }
 
@@ -79,14 +80,15 @@ impl SimpleLLMUpdater {
             .unwrap();
 
         // Create call LLM config for openai compability.
-        let mut call_openai_config = OpenAIConfig::new().with_api_base(&config::CFG.botwaf.llm.generate.api_uri);
-        if let Some(api_key) = &config::CFG.botwaf.llm.generate.api_key {
+        let mut call_openai_config =
+            OpenAIConfig::new().with_api_base(&config::get_config().botwaf.llm.generate.api_uri);
+        if let Some(api_key) = &config::get_config().botwaf.llm.generate.api_key {
             call_openai_config = call_openai_config.with_api_key(api_key);
         }
-        if let Some(org_id) = &config::CFG.botwaf.llm.generate.org_id {
+        if let Some(org_id) = &config::get_config().botwaf.llm.generate.org_id {
             call_openai_config = call_openai_config.with_org_id(org_id);
         }
-        if let Some(project_id) = &config::CFG.botwaf.llm.generate.project_id {
+        if let Some(project_id) = &config::get_config().botwaf.llm.generate.project_id {
             call_openai_config = call_openai_config.with_org_id(project_id);
         }
 
@@ -125,7 +127,7 @@ impl SimpleLLMUpdater {
         //     tool_call_id: None,
         //     tool_calls: None,
         // }];
-        // let embedding_result = ChatCompletion::builder(&config::CFG.botwaf.llm.embedding.model, messages.clone())
+        // let embedding_result = ChatCompletion::builder(&config::get_config().botwaf.llm.embedding.model, messages.clone())
         //     .credentials(self.embedding_openai_config.as_ref().to_owned())
         //     .create()
         //     .await;
@@ -252,7 +254,7 @@ Helpful Answer:
     }
 
     #[allow(unused)]
-    async fn fetch_events(&self, page_index: i64, page_size: i64) -> Vec<BotWafAccessEvent> {
+    async fn fetch_events(&self, page_index: i64, page_size: i64) -> Vec<BotwafAccessEvent> {
         unimplemented!()
     }
 }

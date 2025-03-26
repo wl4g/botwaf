@@ -18,6 +18,5 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-pub mod verifier;
 pub mod verifier_base;
 pub mod verifier_simple_execution;

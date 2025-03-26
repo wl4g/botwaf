@@ -26,6 +26,32 @@ server:
   port: 9999
   context-path: "/"
 
+mgmt:
+  enabled: true
+  host: 0.0.0.0
+  port: 9998
+  tokio-console:
+    enabled: true
+    server-bind: "0.0.0.0:6669"
+    retention: 60
+  pyroscope:
+    # Because of known-issues: https://github.com/grafana/pyroscope-rs/issues/174
+    # https://github.com/tikv/pprof-rs/issues/232 Therefore it is not enabled by default for now.
+    enabled: false
+    server-url: "http://localhost:4040"
+    tags: []
+    sample-rate: 0.1
+  # Notice: More OTEL custom configuration use to env: OTEL_SPAN_xxx, see: opentelemetry_sdk::trace::config::default()
+  otel:
+    enabled: true
+    endpoint: "http://localhost:4317"
+    protocol: grpc # Optional: http/protobuf,http/json,grpc
+    timeout: 10000
+
+logging:
+  mode: HUMAN # Options: HUMAN|JSON
+  level: DEBUG
+
 swagger:
   enabled: true
   # title: "My Webnote API Server"
@@ -37,12 +63,47 @@ swagger:
   # contact_email: "jameswong1376@gmail.com"
   # contact_url: "https://github.com/wl4g/my-webnote"
   # terms_of_service: "api/terms-of-service"
-  swagger_ui_path: "/swagger-ui"
-  swagger_openapi_url: "/swagger-ui/openapi.json"
+  ui_path: "/swagger-ui"
+  openapi_url: "/swagger-ui/openapi.json"
 
-logging:
-  mode: Human
-  level: DEBUG
+auth:
+  jwt-ak-name: "_ak"
+  jwt-rk-name: "_rk"
+  jwt-validity-ak: 3600000
+  jwt-validity-rk: 86400000
+  #jwt-secret: "<YOUR_JWT_SECRET>" # Refer to: .env
+  anonymous-paths:
+    - "/_/healthz"
+    - "/_/healthz/**"
+    # The default accessing to swagger ui required authentication.
+    #- "/swagger-ui/"
+    #- "/swagger-ui/openapi.json"
+    - "/public/**"
+    - "/static/**"
+  oidc:
+    enabled: true
+    #client-id: "<YOUR_OIDC_CLIENT_ID>" # Refer to: .env
+    #client-secret: "<YOUR_OIDC_CLIENT_SECRET>" # Refer to: .env
+    issue-url: "https://iam.wl4g.com/realms/master"
+    #redirect-url: "http://localhost:8888/serve/auth/callback/oidc"
+    redirect-url: "http://wl4g.local:10000/serve/auth/callback/oidc"
+    scope: "openid profile email"
+  # see:https://github.com/settings/developers
+  # see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+  github:
+    enabled: true
+    #client-id: "<YOUR_GITHUB_CLIENT_ID>" # Refer to: .env
+    #client-secret: "<YOUR_GITHUB_CLIENT_SECRET>" # Refer to: .env
+    auth-url: "https://github.com/login/oauth/authorize"
+    token-url: "https://github.com/login/oauth/access_token"
+    #redirect-url: "http://localhost:8888/serve/auth/callback/github"
+    redirect-url: "http://wl4g.local:10000/serve/auth/callback/github"
+    # see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
+    scope: "user"
+    user-info-url: "https://api.github.com/user"
+  login-url: "/static/login.html"
+  success-url: "/static/index.html"
+  unauthz-url: "/static/403.html"
 
 cache:
   provider: Memory # Memory|Redis
@@ -63,7 +124,9 @@ cache:
     read-from-replica: true
 
 appdb:
-  type: "Postgres"
+  type: "SQLITE" # Options: SQLITE|POSTGRESQL|MONGODB
+  sqlite:
+    dir: "/tmp/botwaf/appdb/sqlite"
   postgres: # App DB for PostgreSQL
     host: "127.0.0.1"
     port: 5432
@@ -74,9 +137,12 @@ appdb:
     min-connections: 1
     max-connections: 10
     use-ssl: false
+  mongodb:
+    url: mongodb://127.0.0.1:27017/botwaf
+    database: botwaf
 
 vecdb:
-  type: "PgVector"
+  type: "PGVECTOR" # Options: PGVECTOR
   pg-vector: # Vector DB for PostgreSQL
     host: "127.0.0.1"
     port: 5432

@@ -7,7 +7,6 @@ members = [
     "src/common/mem-prof",
     "src/common/telemetry",
     "src/cmd",
-    "src/standalone",
     "src/server",
     "src/updater",
     "src/verifier",
@@ -41,7 +40,6 @@ common-makestruct = { path = "src/common/makestruct" }
 common-mem-prof = { path = "src/common/mem-prof" }
 common-telemetry = { path = "src/common/telemetry" }
 botwaf-cmd = { path = "src/cmd" }
-botwaf-standalone = { path = "src/standalone" }
 botwaf-server = { path = "src/server" }
 botwaf-updater = { path = "src/updater" }
 botwaf-verifier = { path = "src/verifier" }
@@ -79,17 +77,17 @@ clap = "4.5.7"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.140"
 serde_yaml = "0.9.32"
-validator = { version = "0.18.1", features = ["derive"] }
-serde-wasm-bindgen = "0.6.5"
-wasm-bindgen = "0.2.93"
+validator = { version = "0.20.0", features = ["derive"] }
+# serde-wasm-bindgen = "0.6.5"
+# wasm-bindgen = "0.2.93"
 
 # Logger libs
 env_logger = "0.11.3"
 log = "0.4.22"
 
 # Prometheus libs
-prometheus = "0.13.4"
-axum-prometheus = "0.6.1"
+prometheus = "0.14.0"
+axum-prometheus = "0.8.0"
 
 # Tracing libs
 tracing = "0.1.41"
@@ -105,11 +103,11 @@ opentelemetry-http = "0.12.0"
 # Async core libs
 tokio = { version = "1.43.0", features = ["full", "signal"] }
 tokio-cron-scheduler = { version = "0.13.0" }
-async-trait = "0.1.87"
+async-trait = "0.1.88"
 futures = "0.3"
 
 # Web HTTP libs
-axum = { version = "0.8.1", features = ["multipart"] }
+axum = { version = "0.8.3", features = ["multipart"] }
 hyper = "1.6.0"
 tower = "0.5.2"
 tower-http = "0.5.2"
@@ -128,6 +126,7 @@ pgvector = { version = "0.4", features = ["postgres"] }
 # Swagger/OpenAPI libs
 utoipa = "5.3.1"
 utoipa-swagger-ui = { version = "9.0.0", features = ["axum"] }
+# utoipa-swagger-ui-vendored = { version = "0.1.2" }
 openapi = "0.1.5"
 
 # Auth libs

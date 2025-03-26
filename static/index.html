@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Default Home Page</title>
+    <style>
+      body {
+        font-family: "Comic Sans MS", cursive, sans-serif;
+        background-color: #fffbfb;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        text-align: center;
+      }
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .header-text {
+        color: #6a3d9a;
+        margin-top: -200px;
+      }
+      .center-text {
+        margin-top: 50px;
+      }
+      @keyframes spinAndFade {
+        0% {
+          transform: rotate(0deg);
+          opacity: 1;
+        }
+        100% {
+          transform: rotate(360deg);
+          /*opacity: 0;*/
+        }
+      }
+      .cat-image {
+        margin-top: 20px;
+        width: 92px;
+        height: 92px;
+        border-radius: 50%;
+        object-fit: cover; /* 填充不拉伸 */
+        animation: spinAndFade 2.5s linear forwards;
+      }
+      .footer {
+        position: absolute;
+        bottom: 10px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        color: #808080;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="header-text">The default home page</h1>
+      <p class="center-text">
+        Your already Login successfully! <br /><br />
+        Redirecting to Swagger UI ...
+      </p>
+      <img
+        class="cat-image"
+        src="{{context_path}}/static/img/cat.jpg"
+        alt="A cute little kitty"
+      />
+    </div>
+    <footer class="footer">Copyright © 2024. All rights reserved.</footer>
+    <script>
+      let targetUrl = location.origin + "{{context_path}}{{swagger_ui_path}}";
+      setTimeout(function () {
+        window.location.href = targetUrl;
+      }, 2500);
+    </script>
+  </body>
+</html>

@@ -9,12 +9,16 @@ workspace = true
 
 [dependencies]
 # Other modules dependencies.
+common-audit-log = { workspace = true }
 botwaf-types.workspace = true
 botwaf-utils.workspace = true
 
 # Thridparty dependencies.
 axum.workspace = true
-hyper.workspace = true
+hyper = { workspace = true, features = ["full"] }
+tower = { workspace = true }
+tower-http = { workspace = true, features = ["trace", "auth"] }
+tower-cookies = { workspace = true }
 lazy_static.workspace = true
 clap.workspace = true
 modsecurity.workspace = true
@@ -22,28 +26,71 @@ serde.workspace = true
 validator.workspace = true
 tokio.workspace = true
 tokio-cron-scheduler.workspace = true
-tower.workspace = true
 config.workspace = true
 chrono.workspace = true
-tracing.workspace = true
+once_cell.workspace = true
+arc-swap.workspace = true
 async-trait.workspace = true
-reqwest.workspace = true
+reqwest = { workspace = true, features = ["json"] }
 anyhow.workspace = true
 dotenv.workspace = true
-tracing-subscriber.workspace = true
 thiserror.workspace = true
 serde_json.workspace = true
 regex.workspace = true
-moka.workspace = true
-redis.workspace = true
-sqlx.workspace = true
+openapi.workspace = true
+utoipa = { workspace = true, features = ["axum_extras"] }
+utoipa-swagger-ui = { workspace = true, features = ["axum"] }
+# utoipa-swagger-ui-vendored = { workspace = true}
+futures.workspace = true
+rust-embed.workspace = true
+mime_guess.workspace = true
+# Database libs
+mongodb = { workspace = true }
+sqlx = { workspace = true, features = [
+    "runtime-tokio-rustls",
+    "sqlite",
+    "macros",
+    "chrono",
+    "postgres",
+    "runtime-tokio-native-tls"
+] }
+# LLM AI libs
 openai.workspace = true
 langchain-rust.workspace = true
 pgvector.workspace = true
-openapi.workspace = true
-utoipa.workspace = true
-utoipa-swagger-ui.workspace = true
+# OAuth2 libs
+oauth2.workspace = true
+openidconnect.workspace = true
+jsonwebtoken.workspace = true
 url.workspace = true
+globset.workspace = true
+# Encrypt libs
+openssl = { workspace = true }
+rsa = { workspace = true }
+sha2 = { workspace = true }
+# Cache libs
+moka = { workspace = true, features = ["future"] }
+redis = { workspace = true, features = ["tokio-comp", "cluster-async"] }
+# Ethers libs
+ethers = { workspace = true, features = ["abigen", "ws", "rustls"] }
+eyre = { workspace = true }
+# APM libs
+prometheus.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["json", "env-filter"] }
+tracing-opentelemetry.workspace = true
+tracing-futures.workspace = true
+tracing-attributes.workspace = true
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
+opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
+opentelemetry-http = { workspace = true }
+zip = "=2.3.0"
 
 [build-dependencies]
 chrono.workspace = true
+# Notice: Must force set the version of zip to 2.3.0 due to the used lower grammar static str of utoipa-swagger-ui, 
+# will cause the build error such as : 'expected `Cow<'_, str>`, found `&str`'.
+# see1:https://github1s.com/juhaku/utoipa/blob/utoipa-swagger-ui-9.0.0/utoipa-swagger-ui/Cargo.toml#L52-L53
+# see2:https://github1s.com/juhaku/utoipa/blob/utoipa-swagger-ui-9.0.0/utoipa-swagger-ui/build.rs#L105-L106
+zip = "=2.3.0"

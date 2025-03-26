@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signin or Signup</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #e8f4f8;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .container {
+        text-align: center;
+        background-color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        width: 300px;
+      }
+      h1 {
+        color: #3498db;
+        font-size: 2rem;
+        margin-bottom: 1rem;
+      }
+      input {
+        display: block;
+        width: 100%;
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #bdc3c7;
+        border-radius: 5px;
+        box-sizing: border-box;
+      }
+      button {
+        width: 100%;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        margin-bottom: 0.5rem;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      .federation-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .federation-btn img {
+        width: 20px;
+        height: 20px;
+        margin-right: 10px;
+        border-radius: 20px;
+      }
+      .github {
+        background-color: #24292e;
+      }
+      .github:hover {
+        background-color: #1a1e22;
+      }
+      .oidc {
+        background-color: #4285f4;
+      }
+      .oidc:hover {
+        background-color: #3367d6;
+      }
+      .emoji {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+      }
+      .or-divider {
+        margin: 1rem 0;
+        text-align: center;
+        position: relative;
+      }
+      .or-divider::before,
+      .or-divider::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        width: 45%;
+        height: 1px;
+        background-color: #bdc3c7;
+      }
+      .or-divider::before {
+        left: 0;
+      }
+      .or-divider::after {
+        right: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="emoji">🐱</div>
+      <h1>Welcome back!</h1>
+      <button
+        onclick="window.location.href='{{context_path}}/auth/connect/oidc'"
+        class="federation-btn oidc"
+      >
+        <img src="{{context_path}}/static/img/openid-logo.jpg" alt="OIDC logo" />
+        Signin for OIDC
+      </button>
+      <button
+        onclick="window.location.href='{{context_path}}/auth/connect/github'"
+        class="federation-btn github"
+      >
+        <!-- https://github.githubassets.com/images/modules/logos_page/github-mark.png -->
+        <img src="{{context_path}}/static/img/github-mark.png" alt="GitHub logo" />
+        Signin for GitHub
+      </button>
+      <button id="ethers_wallet_btn" class="federation-btn ethers-wallet">
+        <img src="{{context_path}}/static/img/metamask-logo.png" alt="MetaMask Wallet logo" />
+        <img src="{{context_path}}/static/img/phantom-logo.png" alt="Phantom Wallet logo" />
+        Signin for Ethers Wallet
+      </button>
+      <div class="or-divider">OR</div>
+      <form id="login_form">
+        <input type="text" placeholder="Username" required id="username" />
+        <input type="password" placeholder="Password" required id="password" />
+        <button type="submit">Signin</button>
+      </form>
+    </div>
+    <script src="{{context_path}}/static/js/jquery-3.6.0.min.js"></script>
+    <script src="{{context_path}}/static/js/fp-3.4.2.min.js"></script>
+    <script src="{{context_path}}/static/js/crypto-js-4.1.1.min.js"></script>
+    <script src="{{context_path}}/static/js/jsencrypt-3.2.1.min.js"></script>
+    <script>
+      $(document).ready(function () {
+        // Password login.
+        $("#login_form").submit(function (e) {
+          e.preventDefault();
+
+          // 1. Getting the device fingerprint.
+          (async () => {
+            const fp = await FingerprintJS.load();
+            const result = await fp.get();
+            const visitorId = result.visitorId;
+            console.log("This device fingerprint visitorId:", visitorId);
+
+            // 2. Getting the public key.
+            $.ajax({
+              url: "{{context_path}}/auth/password/pubkey",
+              method: "POST",
+              headers: {
+                "X-Accpet-Type": "json",
+                "Content-Type": "application/json",
+              },
+              data: JSON.stringify({
+                fpToken: visitorId,
+              }),
+              success: function (res1) {
+                // Transforming the base64 decode to public key.
+                const pubkey = atob(JSON.parse(res1).pubkey);
+                const username = $("#username").val();
+                const password = $("#password").val();
+
+                // 3. Hashing to hex from password plaintext.
+                //  DEBUG: echo -n "string" | openssl dgst -sha256 -binary | base64
+                // OUTPUT: RzKH+CmNunFjqJeQiVj3wOrnM+JdLgJ5kuou3JvtL6g=
+                const base64HashedPassword = CryptoJS.SHA256(password).toString(
+                  CryptoJS.enc.Base64
+                );
+
+                // 4. Use RSA to encrypt the hash sign of the password.
+                const encrypt = new JSEncrypt();
+                encrypt.setPublicKey(pubkey);
+                const base64CipherPassword =
+                  encrypt.encrypt(base64HashedPassword);
+
+                // 5. Submission to the login.
+                $.ajax({
+                  url: "/auth/password/verify",
+                  method: "POST",
+                  headers: {
+                    "X-Accept-Type": "json",
+                    "Content-Type": "application/json",
+                  },
+                  data: JSON.stringify({
+                    username: username,
+                    password: base64CipherPassword,
+                    fpToken: visitorId, // 再次传递设备指纹
+                  }),
+                  success: function (res2) {
+                    console.info("Login result:", res2);
+                    if (res2.errcode == 200) {
+                      //window.location.href = "/";
+                      window.location.href = res2.redirectUrl;
+                    }
+                  },
+                  error: function (xhr, status, error) {
+                    console.error("Login failed", error);
+                    alert("Login failed");
+                    //window.location.reload();
+                  },
+                });
+              },
+              error: function (xhr, status, error) {
+                console.error("Failed to get pubkey.", error);
+                alert("Failed to get pubkey!");
+                //window.location.reload();
+              },
+            });
+          })();
+        });
+      });
+    </script>
+    <script type="module">
+      import { ethers } from "{{context_path}}/static/js/ethers-5.2.esm.min.js";
+      $(document).ready(function () {
+        // Ethers wallet login.
+        $("#ethers_wallet_btn").click(function () {
+          (async () => {
+            console.info("Connecting to ethers wallet ...");
+            if (typeof window.ethereum == "undefined") {
+              alert("Please install MetaMask or Wallets!");
+              return;
+            }
+            try {
+              // Wakeup user broswer wallet extension.
+              await window.ethereum.request({
+                method: "eth_requestAccounts",
+              });
+              const provider = new ethers.providers.Web3Provider(
+                window.ethereum
+              );
+              const signer = provider.getSigner();
+              // Getting user wallet pubkey.
+              const address = await signer.getAddress();
+              // Generate random message.
+              const message =
+                "Login to our dApp: " +
+                Math.random().toString(36).substring(2, 15);
+              // Signature the message.
+              const signature = await signer.signMessage(message);
+
+              // Sending the signature to the server verify.
+              const response = await fetch("{{context_path}}/auth/wallet/ethers/verify", {
+                method: "POST",
+                headers: {
+                  "X-Accpet-Type": "json",
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ address, message, signature }),
+              });
+              if (response.ok) {
+                const res = JSON.parse(await response.text());
+                console.log("Login result:", res);
+                if (res.errcode == 200) {
+                  // save the success tokens.
+                  //localStorage.setItem("token", token);
+                  // redirect to the home page.
+                  window.location.href = res.redirectUrl;
+                }
+              } else {
+                console.error("Login failed");
+              }
+            } catch (error) {
+              console.error("Error:", error);
+            }
+          })();
+        });
+      });
+    </script>
+  </body>
+</html>

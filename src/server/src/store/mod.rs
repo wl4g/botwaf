@@ -20,15 +20,17 @@
 
 pub mod mongo;
 #[macro_use]
+pub mod postgres;
+#[macro_use]
 pub mod sqlite;
-pub mod documents_mongo;
-pub mod documents_sqlite;
-
-use anyhow::Error;
-use async_trait::async_trait;
+pub mod users_mongo;
+pub mod users_postgresql;
+pub mod users_sqlite;
 
 use crate::config::config::{AppConfigProperties, AppDBType};
-use server_types::{PageRequest, PageResponse};
+use anyhow::Error;
+use async_trait::async_trait;
+use botwaf_types::{PageRequest, PageResponse};
 
 #[async_trait] // solution2: async fn + dyn polymorphism problem.
 pub trait AsyncRepository<T>: Send {
@@ -50,37 +52,57 @@ pub trait AsyncRepository<T>: Send {
     async fn delete_by_id(&self, id: i64) -> Result<u64, Error>;
 }
 
-pub struct RepositoryManager<T>
+pub struct RepositoryContainer<T>
 where
     T: 'static + Send + Sync,
 {
-    sqlite_repo: Box<dyn AsyncRepository<T>>,
-    mongo_repo: Box<dyn AsyncRepository<T>>,
+    sqlite_repo: Option<Box<dyn AsyncRepository<T>>>,
+    postgres_repo: Option<Box<dyn AsyncRepository<T>>>,
+    mongo_repo: Option<Box<dyn AsyncRepository<T>>>,
 }
 
-impl<T> RepositoryManager<T>
+impl<T> RepositoryContainer<T>
 where
     T: 'static + Send + Sync,
 {
-    pub fn new(sqlite_repo: Box<dyn AsyncRepository<T>>, mongo_repo: Box<dyn AsyncRepository<T>>) -> Self {
-        RepositoryManager {
+    pub fn new(
+        sqlite_repo: Option<Box<dyn AsyncRepository<T>>>,
+        postgres_repo: Option<Box<dyn AsyncRepository<T>>>,
+        mongo_repo: Option<Box<dyn AsyncRepository<T>>>,
+    ) -> Self {
+        RepositoryContainer {
             sqlite_repo,
+            postgres_repo,
             mongo_repo,
         }
     }
 
     fn sqlite_repo(&self) -> &dyn AsyncRepository<T> {
-        &*self.sqlite_repo
+        self.sqlite_repo
+            .as_ref()
+            .map(|repo| &**repo)
+            .expect("The sqlite repository not configured.")
+    }
+
+    fn postgres_repo(&self) -> &dyn AsyncRepository<T> {
+        self.postgres_repo
+            .as_ref()
+            .map(|repo| &**repo)
+            .expect("The postgresql repository not configured.")
     }
 
     fn mongo_repo(&self) -> &dyn AsyncRepository<T> {
-        &*self.mongo_repo
+        self.mongo_repo
+            .as_ref()
+            .map(|repo| &**repo)
+            .expect("The mongodb repository not configured.")
     }
 
     pub fn get(/*&mut self*/ &self, config: &AppConfigProperties) -> &dyn AsyncRepository<T> {
-        match config.db.db_type {
-            AppDBType::Postgres => self.sqlite_repo(),
-            AppDBType::Mongo => self.mongo_repo(),
+        match config.appdb.db_type {
+            AppDBType::SQLITE => self.sqlite_repo(),
+            AppDBType::POSTGRESQL => self.postgres_repo(),
+            AppDBType::MONGODB => self.mongo_repo(),
         }
     }
 }

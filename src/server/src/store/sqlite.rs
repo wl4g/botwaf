@@ -18,20 +18,18 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use anyhow::Error;
 use std::any::Any;
-use std::marker::PhantomData;
 use std::fs;
+use std::marker::PhantomData;
 use std::path::Path;
 
-use anyhow::Error;
-use axum::async_trait;
-
-use tracing::{ info, debug };
-use sqlx::{ migrate::MigrateDatabase, Pool, Sqlite, SqlitePool };
-
-use crate::config::config::DbProperties;
-use server_types::{ PageResponse, PageRequest };
 use super::AsyncRepository;
+use crate::config::config::SqliteAppDBProperties;
+use async_trait::async_trait;
+use botwaf_types::{PageRequest, PageResponse};
+use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
+use tracing::{debug, info};
 
 //
 // const MIGRATION_INIT_SQL: &str = include_str!("../../migrations/20240710083754_init.sql");
@@ -43,8 +41,8 @@ pub struct SQLiteRepository<T: Any + Send + Sync> {
 
 impl<T: Any + Send + Sync> SQLiteRepository<T> {
     // see:https://tms-dev-blog.com/rust-sqlx-basics-with-sqlite/#Adding_a_migration_script
-    pub async fn new(config: &DbProperties) -> Result<Self, Error> {
-        let dir = config.sqlite.dir.to_owned().expect("SQLite dir missing configured").to_string();
+    pub async fn new(config: &SqliteAppDBProperties) -> Result<Self, Error> {
+        let dir = config.dir.to_owned().expect("Sqlite dir missing configured");
         let db_dir = Path::new(&dir);
         if !db_dir.exists() {
             fs::create_dir_all(db_dir).map_err(|e| {
@@ -121,11 +119,7 @@ impl<T: Any + Send + Sync> SQLiteRepository<T> {
 #[allow(unused)]
 #[async_trait]
 impl<T: Any + Send + Sync> AsyncRepository<T> for SQLiteRepository<T> {
-    async fn select(
-        &self,
-        mut param: T,
-        page: PageRequest
-    ) -> Result<(PageResponse, Vec<T>), Error> {
+    async fn select(&self, mut param: T, page: PageRequest) -> Result<(PageResponse, Vec<T>), Error> {
         unimplemented!("select not implemented for SQLiteRepository")
     }
 
@@ -193,7 +187,7 @@ macro_rules! dynamic_sqlite_query {
                 .unwrap();
 
               // Queries to get data.
-              let query = format!("SELECT * FROM {} WHERE {} ORDER BY {} LIMIT {} OFFSET {}", 
+              let query = format!("SELECT * FROM {} WHERE {} ORDER BY {} LIMIT {} OFFSET {}",
                     $table, where_clause, $order_by, $page.get_limit(), $page.get_offset());
 
               let mut operator = sqlx::query_as::<_, $($t),+>(&query);
@@ -220,8 +214,8 @@ macro_rules! dynamic_sqlite_query {
 macro_rules! dynamic_sqlite_insert {
     ($bean:expr, $table:expr, $pool:expr) => {
         {
-            use server_utils::types::GenericValue;
-            use crate::utils::auths::SecurityContext;
+            use botwaf_utils::types::GenericValue;
+            use crate::util::auths::SecurityContext;
 
             let insert_by = SecurityContext::get_instance().get_current_uname_for_store().await;
 
@@ -299,8 +293,8 @@ macro_rules! dynamic_sqlite_insert {
 macro_rules! dynamic_sqlite_update {
     ($bean:expr, $table:expr, $pool:expr) => {
         {
-            use server_utils::types::GenericValue;
-            use crate::utils::auths::SecurityContext;
+            use botwaf_utils::types::GenericValue;
+            use crate::util::auths::SecurityContext;
 
             let update_by = SecurityContext::get_instance().get_current_uname_for_store().await;
             $bean.base.pre_update(update_by).await;

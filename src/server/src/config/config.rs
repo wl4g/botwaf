@@ -18,19 +18,28 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::{env, ops::Deref, sync::Arc};
-
-use crate::logging::logging::LogMode;
+use crate::mgmt::apm::logging::LogMode;
+use crate::mgmt::health::HEALTHZ_URI;
+use arc_swap::ArcSwap;
 use config::Config;
 use dotenv::dotenv;
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::{env, ops::Deref, sync::Arc, time::Duration};
 use validator::Validate;
 
 // Global program information.
 pub const GIT_VERSION: &str = env!("GIT_VERSION");
 pub const GIT_COMMIT_HASH: &str = env!("GIT_COMMIT_HASH");
 pub const GIT_BUILD_DATE: &str = env!("GIT_BUILD_DATE");
+
+// Global static resources.
+pub const DEFAULT_INDEX_HTML: &str = include_str!("../../../../static/index.html");
+pub const DEFAULT_LOGIN_HTML: &str = include_str!("../../../../static/login.html");
+pub const DEFAULT_404_HTML: &str = include_str!("../../../../static/404.html");
+pub const DEFAULT_403_HTML: &str = include_str!("../../../../static/403.html");
 
 lazy_static! {
     pub static ref VERSION: String = format!(
@@ -41,6 +50,8 @@ lazy_static! {
     );
 }
 
+// App Properties.
+
 #[derive(Debug, Serialize, Deserialize, Clone, Validate)]
 #[serde(rename_all = "kebab-case")]
 pub struct AppConfigProperties {
@@ -49,10 +60,14 @@ pub struct AppConfigProperties {
     pub service_name: String,
     #[serde(default = "ServerProperties::default")]
     pub server: ServerProperties,
-    #[serde(default = "SwaggerProperties::default")]
-    pub swagger: SwaggerProperties,
+    #[serde(default = "MgmtProperties::default")]
+    pub mgmt: MgmtProperties,
     #[serde(default = "LoggingProperties::default")]
     pub logging: LoggingProperties,
+    #[serde(default = "SwaggerProperties::default")]
+    pub swagger: SwaggerProperties,
+    #[serde(default = "AuthProperties::default")]
+    pub auth: AuthProperties,
     #[serde(default = "CacheProperties::default")]
     pub cache: CacheProperties,
     #[serde(default = "AppDBProperties::default")]
@@ -63,6 +78,8 @@ pub struct AppConfigProperties {
     pub botwaf: BotwafProperties,
 }
 
+// Server Properties.
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ServerProperties {
     #[serde(rename = "host")]
@@ -72,6 +89,64 @@ pub struct ServerProperties {
     #[serde(rename = "context-path")]
     pub context_path: Option<String>,
 }
+
+// Management Properties.
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MgmtProperties {
+    #[serde(rename = "enabled")]
+    pub enabled: bool,
+    #[serde(rename = "host")]
+    pub host: String,
+    #[serde(rename = "port")]
+    pub port: u16,
+    #[serde(default = "TokioConsoleProperties::default", rename = "tokio-console")]
+    pub tokio_console: TokioConsoleProperties,
+    #[serde(default = "PyroscopeAgentProperties::default")]
+    pub pyroscope: PyroscopeAgentProperties,
+    #[serde(default = "OtelProperties::default")]
+    pub otel: OtelProperties,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TokioConsoleProperties {
+    pub enabled: bool,
+    //#[env_config(name = "MW_TOKIO_CONSOLE_SERVER_BIND", default = "0.0.0.0:6699")]
+    #[serde(rename = "server-bind")]
+    pub server_bind: String,
+    pub retention: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PyroscopeAgentProperties {
+    pub enabled: bool,
+    #[serde(rename = "server-url")]
+    pub server_url: String,
+    #[serde(rename = "auth-token")]
+    pub auth_token: Option<String>,
+    pub tags: Option<Vec<(String, String)>>,
+    #[serde(rename = "sample-rate")]
+    pub sample_rate: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OtelProperties {
+    pub enabled: bool,
+    pub endpoint: String,
+    pub protocol: String,
+    pub timeout: Option<u64>,
+    // Notice: More OTEL custom configuration use to environment: OTEL_SPAN_xxx, see to: opentelemetry_sdk::trace::config::default()
+}
+
+// Logging Properties.
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LoggingProperties {
+    pub mode: LogMode,
+    pub level: String,
+}
+
+// Swagger Properties.
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SwaggerProperties {
@@ -86,15 +161,90 @@ pub struct SwaggerProperties {
     // pub contact_url: String,
     // pub terms_of_service: String,
     // //pub security_definitions: vec![],
-    pub swagger_ui_path: String,
-    pub swagger_openapi_url: String,
+    pub ui_path: String,
+    pub openapi_url: String,
+}
+
+// Auth Properties.
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AuthProperties {
+    #[serde(rename = "jwt-ak-name")]
+    pub jwt_ak_name: Option<String>,
+    #[serde(rename = "jwt-rk-name")]
+    pub jwt_rk_name: Option<String>,
+    #[serde(rename = "jwt-validity-ak")]
+    pub jwt_validity_ak: Option<u64>,
+    #[serde(rename = "jwt-validity-rk")]
+    pub jwt_validity_rk: Option<u64>,
+    #[serde(rename = "jwt-secret")]
+    pub jwt_secret: Option<String>,
+    #[serde(rename = "anonymous-paths")]
+    pub anonymous_paths: Option<Vec<String>>,
+    #[serde(rename = "oidc")]
+    pub oidc: OidcProperties,
+    #[serde(rename = "github")]
+    pub github: GithubProperties,
+    #[serde(rename = "login-url")]
+    pub login_url: Option<String>,
+    #[serde(rename = "success-url")]
+    pub success_url: Option<String>,
+    #[serde(rename = "unauthz-url")]
+    pub unauthz_url: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct LoggingProperties {
-    pub mode: LogMode,
-    pub level: String,
+pub struct OidcProperties {
+    pub enabled: Option<bool>,
+    #[serde(rename = "client-id")]
+    pub client_id: Option<String>,
+    #[serde(rename = "client-secret")]
+    pub client_secret: Option<String>,
+    #[serde(rename = "issue-url")]
+    pub issue_url: Option<String>,
+    #[serde(rename = "redirect-url")]
+    pub redirect_url: Option<String>,
+    #[serde(rename = "scope")]
+    pub scope: Option<String>,
 }
+
+// see:https://github.com/settings/developers
+// see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OAuth2Properties {
+    pub enabled: Option<bool>,
+    #[serde(rename = "client-id")]
+    pub client_id: Option<String>,
+    #[serde(rename = "client-secret")]
+    pub client_secret: Option<String>,
+    #[serde(rename = "auth-url")]
+    pub auth_url: Option<String>,
+    #[serde(rename = "token-url")]
+    pub token_url: Option<String>,
+    #[serde(rename = "redirect-url")]
+    pub redirect_url: Option<String>,
+    // see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
+    #[serde(rename = "scope")]
+    pub scope: Option<String>,
+    #[serde(rename = "user-info-url")]
+    pub user_info_url: Option<String>,
+}
+
+// see:https://github.com/settings/developers
+// see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GithubProperties(OAuth2Properties);
+
+/// Copy all OAuth2Config functions to GithubConfig.
+impl Deref for GithubProperties {
+    type Target = OAuth2Properties;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+// Cache Properties.
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CacheProperties {
@@ -138,23 +288,36 @@ pub struct RedisProperties {
     pub read_from_replicas: Option<bool>,
 }
 
+// App DB Properties.
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppDBProperties {
     #[serde(rename = "type")]
     pub db_type: AppDBType,
-    #[serde(rename = "pg-app-db", default = "PgAppDBProperties::default")]
-    pub postgres: PgAppDBProperties,
+    #[serde(rename = "sqlite", default = "SqliteAppDBProperties::default")]
+    pub sqlite: SqliteAppDBProperties,
+    #[serde(rename = "postgres", default = "PostgresAppDBProperties::default")]
+    pub postgres: PostgresAppDBProperties,
+    #[serde(rename = "mongodb", default = "MongoAppDBProperties::default")]
+    pub mongodb: MongoAppDBProperties,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum AppDBType {
-    Postgres,
-    Mongo,
+    SQLITE,
+    POSTGRESQL,
+    MONGODB,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PostgresProperties {
+pub struct SqliteAppDBProperties {
+    #[serde(rename = "dir")]
+    pub dir: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PostgresPropertiesBase {
     #[serde(rename = "host")]
     pub host: String,
     #[serde(rename = "port")]
@@ -176,16 +339,20 @@ pub struct PostgresProperties {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PgAppDBProperties {
+pub struct PostgresAppDBProperties {
     #[serde(flatten)]
-    pub inner: PostgresProperties,
+    pub inner: PostgresPropertiesBase,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MongoAppDBProperties {
-    #[serde(rename = "conn-url")]
-    pub conn_url: String,
+    #[serde(rename = "url")]
+    pub url: Option<String>,
+    #[serde(rename = "database")]
+    pub database: Option<String>,
 }
+
+// Vector DB Properties.
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VectorDBProperties {
@@ -198,14 +365,16 @@ pub struct VectorDBProperties {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum VectorDBType {
-    PgVector,
+    PGVECTOR,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PgVectorDBProperties {
     #[serde(flatten)]
-    pub inner: PostgresProperties,
+    pub inner: PostgresPropertiesBase,
 }
+
+// Botwaf Properties.
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BotwafProperties {
@@ -341,13 +510,17 @@ pub struct StaticRule {
     pub value: String,
 }
 
+// App Properties impls.
+
 impl AppConfigProperties {
     pub fn default() -> AppConfigProperties {
         AppConfigProperties {
             service_name: String::from("botwaf"),
             server: ServerProperties::default(),
-            swagger: SwaggerProperties::default(),
+            mgmt: MgmtProperties::default(),
             logging: LoggingProperties::default(),
+            swagger: SwaggerProperties::default(),
+            auth: AuthProperties::default(),
             cache: CacheProperties::default(),
             appdb: AppDBProperties::default(),
             vecdb: VectorDBProperties::default(),
@@ -366,6 +539,67 @@ impl Default for ServerProperties {
     }
 }
 
+// Management Properties impls.
+
+impl Default for MgmtProperties {
+    fn default() -> Self {
+        MgmtProperties {
+            enabled: true,
+            host: String::from("127.0.0.1"),
+            port: 9998,
+            tokio_console: TokioConsoleProperties::default(),
+            pyroscope: PyroscopeAgentProperties::default(),
+            otel: OtelProperties::default(),
+        }
+    }
+}
+
+impl Default for TokioConsoleProperties {
+    fn default() -> Self {
+        TokioConsoleProperties {
+            enabled: true,
+            server_bind: String::from("0.0.0.0:6669"),
+            retention: 60,
+        }
+    }
+}
+
+impl Default for PyroscopeAgentProperties {
+    fn default() -> Self {
+        PyroscopeAgentProperties {
+            enabled: true,
+            server_url: String::from("http://127.0.0.1:4040"),
+            auth_token: None,
+            tags: None,
+            sample_rate: 0.1,
+        }
+    }
+}
+
+impl Default for OtelProperties {
+    fn default() -> Self {
+        OtelProperties {
+            enabled: true,
+            endpoint: String::from("http://localhost:4317"),
+            protocol: String::from("grpc"),
+            timeout: Some(Duration::from_secs(10).as_millis() as u64),
+        }
+    }
+}
+
+// Logging Properties impls.
+
+impl Default for LoggingProperties {
+    fn default() -> Self {
+        LoggingProperties {
+            mode: LogMode::JSON,
+            level: "info".to_string(),
+        }
+    }
+}
+
+// Swagger Properties impls.
+
 impl Default for SwaggerProperties {
     fn default() -> Self {
         SwaggerProperties {
@@ -380,20 +614,69 @@ impl Default for SwaggerProperties {
             // contact_url: "https://github.com/wl4g/my-webnote".to_string(),
             // terms_of_service: "api/terms-of-service".to_string(),
             // //security_definitions: vec![],
-            swagger_ui_path: "/swagger-ui".to_string(),
-            swagger_openapi_url: "/api-docs/openapi.json".to_string(),
+            ui_path: "/swagger-ui".to_string(),
+            openapi_url: "/api-docs/openapi.json".to_string(),
         }
     }
 }
 
-impl Default for LoggingProperties {
+// Auth Properties impls.
+
+impl Default for AuthProperties {
     fn default() -> Self {
-        LoggingProperties {
-            mode: LogMode::JSON,
-            level: "info".to_string(),
+        AuthProperties {
+            jwt_ak_name: Some(String::from("_ak")),
+            jwt_rk_name: Some(String::from("_rk")),
+            jwt_validity_ak: Some(3600_000),
+            jwt_validity_rk: Some(86400_000),
+            jwt_secret: Some("changeit".to_string()),
+            anonymous_paths: None,
+            oidc: OidcProperties::default(),
+            github: GithubProperties::default(),
+            login_url: Some(String::from("/static/login.html")),
+            success_url: Some(String::from("/static/index.html")),
+            unauthz_url: Some(String::from("/static/403.html")),
         }
     }
 }
+
+impl Default for OidcProperties {
+    fn default() -> Self {
+        OidcProperties {
+            enabled: Some(false),
+            client_id: None,
+            client_secret: None,
+            issue_url: None,
+            redirect_url: None,
+            scope: Some("openid profile email".to_string()),
+        }
+    }
+}
+
+impl Default for OAuth2Properties {
+    fn default() -> Self {
+        OAuth2Properties {
+            enabled: Some(false),
+            client_id: None,
+            client_secret: None,
+            auth_url: None,
+            token_url: None,
+            redirect_url: None,
+            // see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
+            scope: Some("openid profile user:email user:follow read:user read:project public_repo".to_string()),
+            user_info_url: None,
+        }
+    }
+}
+
+impl Default for GithubProperties {
+    fn default() -> Self {
+        // Beautifully impls for like java extends.
+        GithubProperties(OAuth2Properties::default())
+    }
+}
+
+// Cache Properties impls.
 
 impl Default for CacheProperties {
     fn default() -> Self {
@@ -432,18 +715,30 @@ impl Default for RedisProperties {
     }
 }
 
+// App DB Properties impls.
+
 impl Default for AppDBProperties {
     fn default() -> Self {
         AppDBProperties {
-            db_type: AppDBType::Postgres,
-            postgres: PgAppDBProperties::default(),
+            db_type: AppDBType::POSTGRESQL,
+            sqlite: SqliteAppDBProperties::default(),
+            postgres: PostgresAppDBProperties::default(),
+            mongodb: MongoAppDBProperties::default(),
         }
     }
 }
 
-impl Default for PostgresProperties {
+impl Default for SqliteAppDBProperties {
     fn default() -> Self {
-        PostgresProperties {
+        SqliteAppDBProperties {
+            dir: Some(String::from("/tmp/botwaf/appdb/sqlite")),
+        }
+    }
+}
+
+impl Default for PostgresPropertiesBase {
+    fn default() -> Self {
+        PostgresPropertiesBase {
             host: String::from("127.0.0.1"),
             port: 5432,
             database: String::from("botwaf"),
@@ -457,26 +752,37 @@ impl Default for PostgresProperties {
     }
 }
 
-impl Default for PgAppDBProperties {
+impl Default for PostgresAppDBProperties {
     fn default() -> Self {
-        PgAppDBProperties {
-            inner: PostgresProperties::default(),
+        PostgresAppDBProperties {
+            inner: PostgresPropertiesBase::default(),
         }
     }
 }
 
-impl Deref for PgAppDBProperties {
-    type Target = PostgresProperties;
+impl Deref for PostgresAppDBProperties {
+    type Target = PostgresPropertiesBase;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
+impl Default for MongoAppDBProperties {
+    fn default() -> Self {
+        MongoAppDBProperties {
+            url: Some(String::from("mongodb://localhost:27017")),
+            database: Some(String::from("mywebnote")),
+        }
+    }
+}
+
+// Vector DB Properties impls.
+
 impl Default for VectorDBProperties {
     fn default() -> Self {
         VectorDBProperties {
-            db_type: VectorDBType::PgVector,
+            db_type: VectorDBType::PGVECTOR,
             pg_vector: PgVectorDBProperties::default(),
         }
     }
@@ -485,24 +791,26 @@ impl Default for VectorDBProperties {
 impl Default for PgVectorDBProperties {
     fn default() -> Self {
         PgVectorDBProperties {
-            inner: PostgresProperties::default(),
+            inner: PostgresPropertiesBase::default(),
         }
     }
 }
 
 impl Deref for PgVectorDBProperties {
-    type Target = PostgresProperties;
+    type Target = PostgresPropertiesBase;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
+// Botwaf Properties impls.
+
 impl Default for BotwafProperties {
     fn default() -> Self {
         BotwafProperties {
             blocked_status_code: None,
-            blocked_header_name: String::from("X-BotWaf-Blocked"),
+            blocked_header_name: String::from("X-Botwaf-Blocked"),
             allow_addition_modsec_info: true,
             static_rules: vec![],
             llm: LlmProperties::default(),
@@ -600,41 +908,120 @@ impl Default for ForwardProperties {
     }
 }
 
-fn init() -> Arc<AppConfigProperties> {
+// App Configuration.
+
+#[derive(Debug)]
+pub struct AppConfig {
+    pub inner: AppConfigProperties,
+    pub auth_jwt_ak_name: String,
+    pub auth_jwt_rk_name: String,
+    pub auth_anonymous_glob_matcher: Option<GlobSet>,
+}
+
+impl Deref for AppConfig {
+    type Target = AppConfigProperties;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl AppConfig {
+    pub fn new(config: &AppConfigProperties) -> Arc<AppConfig> {
+        // Build to auth anonymous glob matcher.
+        let globset;
+        if config.auth.anonymous_paths.is_some() {
+            let mut builder = GlobSetBuilder::new();
+            for path in config.auth.anonymous_paths.as_ref().unwrap() {
+                builder.add(Glob::new(path).unwrap());
+            }
+            globset = Some(builder.build().unwrap());
+        } else {
+            // Add internal components routes to defaults.
+            let mut builder = GlobSetBuilder::new();
+            builder.add(Glob::new(HEALTHZ_URI).unwrap());
+            builder.add(Glob::new(format!("{}/**", HEALTHZ_URI).as_str()).unwrap());
+            // The default accessing to swagger ui required authentication.
+            //builder.add(Glob::new(&config.swagger.swagger_ui_path).unwrap());
+            //builder.add(Glob::new(&config.swagger.swagger_openapi_url).unwrap());
+            builder.add(Glob::new("/public/**").unwrap());
+            builder.add(Glob::new("/static/**").unwrap());
+            globset = Some(builder.build().unwrap());
+        }
+
+        Arc::new(AppConfig {
+            inner: config.clone(),
+            auth_jwt_ak_name: config
+                .auth
+                .jwt_ak_name
+                .to_owned()
+                .unwrap_or(String::from("_ak"))
+                .to_string(),
+            auth_jwt_rk_name: config
+                .auth
+                .jwt_rk_name
+                .to_owned()
+                .unwrap_or(String::from("_rk"))
+                .to_string(),
+            auth_anonymous_glob_matcher: globset,
+        })
+    }
+
+    pub fn validate(self) -> Result<AppConfig, anyhow::Error> {
+        // self.validate();
+        Ok(self)
+    }
+}
+
+fn init() -> Arc<AppConfig> {
     dotenv().ok(); // Notice: Must be called before parse from environment file (.env).
 
-    let config = Arc::new(
-        env::var("BOTWAF_CFG_PATH")
-            .map(|path| {
-                Config::builder()
-                    .add_source(config::File::with_name(path.as_str()))
-                    .add_source(
-                        // Extrat candidate from env refer to: https://github.com/rust-cli/config-rs/blob/v0.15.9/src/env.rs#L290
-                        // Set up into hierarchy struct attibutes refer to:https://github.com/rust-cli/config-rs/blob/v0.15.9/src/source.rs#L24
-                        config::Environment::with_prefix("BOTWAF")
-                            // Notice: Use double "_" to distinguish between different hierarchy struct or attribute alies at the same level.
-                            .separator("__")
-                            .convert_case(config::Case::Cobol)
-                            .keep_prefix(true), // Remove the prefix when matching.
-                    )
-                    .build()
-                    .unwrap_or_else(|err| panic!("Error parsing config: {}", err))
-                    .try_deserialize::<AppConfigProperties>()
-                    .unwrap_or_else(|err| panic!("Error deserialize config: {}", err))
-            })
-            .unwrap_or(AppConfigProperties::default()),
-    );
+    let yaml_config = env::var("BOTWAF_CFG_PATH")
+        .map(|path| {
+            Config::builder()
+                .add_source(config::File::with_name(path.as_str()))
+                .add_source(
+                    // Extrat candidate from env refer to: https://github.com/rust-cli/config-rs/blob/v0.15.9/src/env.rs#L290
+                    // Set up into hierarchy struct attibutes refer to:https://github.com/rust-cli/config-rs/blob/v0.15.9/src/source.rs#L24
+                    config::Environment::with_prefix("BOTWAF")
+                        // Notice: Use double "_" to distinguish between different hierarchy struct or attribute alies at the same level.
+                        .separator("__")
+                        .convert_case(config::Case::Cobol)
+                        .keep_prefix(true), // Remove the prefix when matching.
+                )
+                .build()
+                .unwrap_or_else(|err| panic!("Error parsing config: {}", err))
+                .try_deserialize::<AppConfigProperties>()
+                .unwrap_or_else(|err| panic!("Error deserialize config: {}", err))
+        })
+        .unwrap_or(AppConfigProperties::default());
+
+    let config = AppConfig::new(&yaml_config);
+
     if env::var("BOTWAF_CFG_VERBOSE").is_ok() || env::var("VERBOSE").is_ok() {
         println!("If you don't want to print the loaded configuration details, you can disable it by set up BOTWAF_CFG_VERBOSE=false.");
         println!(
             "Loaded the config details: {}",
-            serde_json::to_string(config.as_ref()).unwrap()
+            serde_json::to_string(&config.to_owned().inner).unwrap()
         );
     }
 
     return config;
 }
 
-lazy_static! {
-    pub static ref CFG: Arc<AppConfigProperties> = init();
+pub fn get_config() -> Arc<AppConfig> {
+    CONFIG.load().clone()
 }
+
+pub fn refresh_config() -> Result<(), anyhow::Error> {
+    CONFIG.store(init());
+    Ok(())
+}
+
+// Global the single refreshable configuration instance.
+// see: https://github.com/wl4g-collect/openobserve/blob/v0.10.9/src/config/src/config.rs#L186
+static CONFIG: Lazy<ArcSwap<AppConfig>> = Lazy::new(|| ArcSwap::from(init()));
+
+// TODO: Removed here.
+// lazy_static! {
+//     pub static ref CFG: Arc<AppConfig> = init();
+// }
