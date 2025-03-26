@@ -27,7 +27,7 @@ pub mod documents_sqlite;
 use anyhow::Error;
 use async_trait::async_trait;
 
-use crate::config::config::{AppConfigProperties, DbType};
+use crate::config::config::{AppConfigProperties, AppDBType};
 use server_types::{PageRequest, PageResponse};
 
 #[async_trait] // solution2: async fn + dyn polymorphism problem.
@@ -79,8 +79,8 @@ where
 
     pub fn get(/*&mut self*/ &self, config: &AppConfigProperties) -> &dyn AsyncRepository<T> {
         match config.db.db_type {
-            DbType::Sqlite => self.sqlite_repo(),
-            DbType::Mongo => self.mongo_repo(),
+            AppDBType::Postgres => self.sqlite_repo(),
+            AppDBType::Mongo => self.mongo_repo(),
         }
     }
 }

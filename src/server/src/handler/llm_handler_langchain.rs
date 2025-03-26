@@ -67,12 +67,12 @@ impl LangchainLLMHandler {
 
         let pgconn_url = format!(
             "postgresql://{}:{}@{}:{}/{}?schema={}",
-            config::CFG.database.vectordb.username,
-            config::CFG.database.vectordb.password.to_owned().unwrap_or_default(),
-            config::CFG.database.vectordb.host,
-            config::CFG.database.vectordb.port,
-            config::CFG.database.vectordb.database,
-            config::CFG.database.vectordb.schema,
+            config::CFG.vecdb.pg_vector.username,
+            config::CFG.vecdb.pg_vector.password.to_owned().unwrap_or_default(),
+            config::CFG.vecdb.pg_vector.host,
+            config::CFG.vecdb.pg_vector.port,
+            config::CFG.vecdb.pg_vector.database,
+            config::CFG.vecdb.pg_vector.schema,
         );
         // Create the knowledge vector store for PG vector.
         let pgvec_store = StoreBuilder::new()

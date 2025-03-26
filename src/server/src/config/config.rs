@@ -55,8 +55,10 @@ pub struct AppConfigProperties {
     pub logging: LoggingProperties,
     #[serde(default = "CacheProperties::default")]
     pub cache: CacheProperties,
-    #[serde(default = "DatabaseProperties::default")]
-    pub database: DatabaseProperties,
+    #[serde(default = "AppDBProperties::default")]
+    pub appdb: AppDBProperties,
+    #[serde(default = "VectorDBProperties::default")]
+    pub vecdb: VectorDBProperties,
     #[serde(default = "BotwafProperties::default")]
     pub botwaf: BotwafProperties,
 }
@@ -137,11 +139,18 @@ pub struct RedisProperties {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DatabaseProperties {
-    #[serde(rename = "systemdb", default = "SystemDBProperties::default")]
-    pub systemdb: SystemDBProperties,
-    #[serde(rename = "vectorpg", default = "PgVectorProperties::default")]
-    pub vectordb: PgVectorProperties,
+pub struct AppDBProperties {
+    #[serde(rename = "type")]
+    pub db_type: AppDBType,
+    #[serde(rename = "pg-app-db", default = "PgAppDBProperties::default")]
+    pub postgres: PgAppDBProperties,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum AppDBType {
+    Postgres,
+    Mongo,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -167,13 +176,33 @@ pub struct PostgresProperties {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SystemDBProperties {
+pub struct PgAppDBProperties {
     #[serde(flatten)]
     pub inner: PostgresProperties,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PgVectorProperties {
+pub struct MongoAppDBProperties {
+    #[serde(rename = "conn-url")]
+    pub conn_url: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct VectorDBProperties {
+    #[serde(rename = "type")]
+    pub db_type: VectorDBType,
+    #[serde(rename = "pg-vec-db", default = "PgVectorDBProperties::default")]
+    pub pg_vector: PgVectorDBProperties,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum VectorDBType {
+    PgVector,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PgVectorDBProperties {
     #[serde(flatten)]
     pub inner: PostgresProperties,
 }
@@ -320,7 +349,8 @@ impl AppConfigProperties {
             swagger: SwaggerProperties::default(),
             logging: LoggingProperties::default(),
             cache: CacheProperties::default(),
-            database: DatabaseProperties::default(),
+            appdb: AppDBProperties::default(),
+            vecdb: VectorDBProperties::default(),
             botwaf: BotwafProperties::default(),
         }
     }
@@ -402,11 +432,11 @@ impl Default for RedisProperties {
     }
 }
 
-impl Default for DatabaseProperties {
+impl Default for AppDBProperties {
     fn default() -> Self {
-        DatabaseProperties {
-            systemdb: SystemDBProperties::default(),
-            vectordb: PgVectorProperties::default(),
+        AppDBProperties {
+            db_type: AppDBType::Postgres,
+            postgres: PgAppDBProperties::default(),
         }
     }
 }
@@ -427,15 +457,15 @@ impl Default for PostgresProperties {
     }
 }
 
-impl Default for SystemDBProperties {
+impl Default for PgAppDBProperties {
     fn default() -> Self {
-        SystemDBProperties {
+        PgAppDBProperties {
             inner: PostgresProperties::default(),
         }
     }
 }
 
-impl Deref for SystemDBProperties {
+impl Deref for PgAppDBProperties {
     type Target = PostgresProperties;
 
     fn deref(&self) -> &Self::Target {
@@ -443,15 +473,24 @@ impl Deref for SystemDBProperties {
     }
 }
 
-impl Default for PgVectorProperties {
+impl Default for VectorDBProperties {
     fn default() -> Self {
-        PgVectorProperties {
+        VectorDBProperties {
+            db_type: VectorDBType::PgVector,
+            pg_vector: PgVectorDBProperties::default(),
+        }
+    }
+}
+
+impl Default for PgVectorDBProperties {
+    fn default() -> Self {
+        PgVectorDBProperties {
             inner: PostgresProperties::default(),
         }
     }
 }
 
-impl Deref for PgVectorProperties {
+impl Deref for PgVectorDBProperties {
     type Target = PostgresProperties;
 
     fn deref(&self) -> &Self::Target {

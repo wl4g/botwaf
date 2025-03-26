@@ -62,8 +62,9 @@ cache:
     min-retry-wait: 1280
     read-from-replica: true
 
-database:
-  systempg:
+appdb:
+  type: "Postgres"
+  postgres: # App DB for PostgreSQL
     host: "127.0.0.1"
     port: 5432
     database: "botwaf_sys"
@@ -73,7 +74,10 @@ database:
     min-connections: 1
     max-connections: 10
     use-ssl: false
-  pgvector:
+
+vecdb:
+  type: "PgVector"
+  pg-vector: # Vector DB for PostgreSQL
     host: "127.0.0.1"
     port: 5432
     database: "botwaf_vecdb"
