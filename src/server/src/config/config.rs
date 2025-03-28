@@ -1020,8 +1020,3 @@ pub fn refresh_config() -> Result<(), anyhow::Error> {
 // Global the single refreshable configuration instance.
 // see: https://github.com/wl4g-collect/openobserve/blob/v0.10.9/src/config/src/config.rs#L186
 static CONFIG: Lazy<ArcSwap<AppConfig>> = Lazy::new(|| ArcSwap::from(init()));
-
-// TODO: Removed here.
-// lazy_static! {
-//     pub static ref CFG: Arc<AppConfig> = init();
-// }
