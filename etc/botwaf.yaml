@@ -82,7 +82,7 @@ auth:
     - "/static/**"
   oidc:
     enabled: true
-    #client-id: "<YOUR_OIDC_CLIENT_ID>" # Refer to: .env
+    client-id: "<YOUR_OIDC_CLIENT_ID>" # Refer to: .env
     #client-secret: "<YOUR_OIDC_CLIENT_SECRET>" # Refer to: .env
     issue-url: "https://iam.wl4g.com/realms/master"
     #redirect-url: "http://localhost:8888/serve/auth/callback/oidc"
@@ -132,7 +132,7 @@ appdb:
     port: 5432
     database: "botwaf_sys"
     schema: "public"
-    user: "postgres"
+    username: postgres
     password: "changeit"
     min-connections: 1
     max-connections: 10
@@ -148,13 +148,13 @@ vecdb:
     port: 5432
     database: "botwaf_vecdb"
     schema: "public"
-    user: "postgres"
+    username: "postgres"
     password: "changeit"
     min-connections: 1
     max-connections: 10
     use-ssl: false
 
-botwaf:
+waf:
   # Blocked response status code when ModSecurity engine forbidded. If not set, the modsec matched status code.
   # Notice: Nginx support status code range: 300-599.
   blocked-status-code: 433
@@ -186,8 +186,8 @@ botwaf:
       model: "bge-m3:latest"
       org-id: # Optional
       project-id: # Optional
-      pre_delete_collection: false
-      vector_dimensions: 1536
+      pre-delete-collection: false
+      vector-dimensions: 1536
     generate:
       # Notice: The '__' should be used to distinguish different levels of structure properties, such as:
       # BOTWAF__LLM__API_KEY to match BotwafProperties{llm:LlmProperties{completion:GenerateProperties{api_key}}}

@@ -100,7 +100,7 @@ impl BotwafState {
         let modsec_engine = Arc::new(ModSecurity::default());
 
         let mut rules = Rules::new();
-        for rule in config::get_config().botwaf.static_rules.clone() {
+        for rule in config::get_config().waf.static_rules.clone() {
             if rule.kind == "RAW" {
                 tracing::info!(
                     "Loading the security static rule: {} - {} - {}",

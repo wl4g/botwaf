@@ -74,8 +74,8 @@ pub struct AppConfigProperties {
     pub appdb: AppDBProperties,
     #[serde(default = "VectorDBProperties::default")]
     pub vecdb: VectorDBProperties,
-    #[serde(default = "BotwafProperties::default")]
-    pub botwaf: BotwafProperties,
+    #[serde(default = "WafProperties::default")]
+    pub waf: WafProperties,
 }
 
 // Server Properties.
@@ -374,10 +374,10 @@ pub struct PgVectorDBProperties {
     pub inner: PostgresPropertiesBase,
 }
 
-// Botwaf Properties.
+// Waf Properties.
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct BotwafProperties {
+pub struct WafProperties {
     // Notice: Nginx support status code range: 300-599.
     #[serde(rename = "blocked-status-code")]
     pub blocked_status_code: Option<u16>,
@@ -524,7 +524,7 @@ impl AppConfigProperties {
             cache: CacheProperties::default(),
             appdb: AppDBProperties::default(),
             vecdb: VectorDBProperties::default(),
-            botwaf: BotwafProperties::default(),
+            waf: WafProperties::default(),
         }
     }
 }
@@ -804,11 +804,11 @@ impl Deref for PgVectorDBProperties {
     }
 }
 
-// Botwaf Properties impls.
+// Waf Properties impls.
 
-impl Default for BotwafProperties {
+impl Default for WafProperties {
     fn default() -> Self {
-        BotwafProperties {
+        WafProperties {
             blocked_status_code: None,
             blocked_header_name: String::from("X-Botwaf-Blocked"),
             allow_addition_modsec_info: true,
@@ -986,7 +986,7 @@ fn init() -> Arc<AppConfig> {
                         // Notice: Use double "_" to distinguish between different hierarchy struct or attribute alies at the same level.
                         .separator("__")
                         .convert_case(config::Case::Cobol)
-                        .keep_prefix(true), // Remove the prefix when matching.
+                        .keep_prefix(false), // Remove the prefix when matching.
                 )
                 .build()
                 .unwrap_or_else(|err| panic!("Error parsing config: {}", err))

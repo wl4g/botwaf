@@ -52,7 +52,7 @@ impl BotwafVerifierManager {
 
     pub async fn init() {
         tracing::info!("Register All Botwaf verifiers ...");
-        for config in &config::get_config().botwaf.verifiers {
+        for config in &config::get_config().waf.verifiers {
             if !config.enabled {
                 tracing::info!("Skipping implementation verifier: {}", config.name);
                 continue;
@@ -72,7 +72,7 @@ impl BotwafVerifierManager {
             }
         }
         tracing::info!("Initializing All Botwaf verifiers ...");
-        for config in &config::get_config().botwaf.verifiers {
+        for config in &config::get_config().waf.verifiers {
             if !config.enabled {
                 tracing::info!("Skipping implementation verifier: {}", config.name);
                 continue;

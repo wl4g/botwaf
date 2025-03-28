@@ -38,11 +38,11 @@ impl HttpForwardHandler {
 
     pub fn new() -> Arc<Self> {
         let mut builder = reqwest::ClientBuilder::new()
-            .connect_timeout(Duration::from_secs(config::get_config().botwaf.forward.connect_timeout))
-            .read_timeout(Duration::from_secs(config::get_config().botwaf.forward.read_timeout))
-            .timeout(Duration::from_secs(config::get_config().botwaf.forward.total_timeout))
-            .connection_verbose(config::get_config().botwaf.forward.verbose);
-        if let Some(proxy) = &config::get_config().botwaf.forward.http_proxy {
+            .connect_timeout(Duration::from_secs(config::get_config().waf.forward.connect_timeout))
+            .read_timeout(Duration::from_secs(config::get_config().waf.forward.read_timeout))
+            .timeout(Duration::from_secs(config::get_config().waf.forward.total_timeout))
+            .connection_verbose(config::get_config().waf.forward.verbose);
+        if let Some(proxy) = &config::get_config().waf.forward.http_proxy {
             builder = builder.proxy(Proxy::http(proxy).expect("parse http proxy addr error"));
         }
         Arc::new(Self {
@@ -53,7 +53,7 @@ impl HttpForwardHandler {
     // Extract the upstream URL from the request headers.
     fn get_upstream_url(&self, incoming: Arc<HttpIncomingRequest>) -> Result<String> {
         let upstream_header_name = config::get_config()
-            .botwaf
+            .waf
             .forward
             .upstream_destination_header_name
             .to_owned();
@@ -83,7 +83,7 @@ impl HttpForwardHandler {
     // Forward the request to the upstream server.
     async fn do_forward_request(&self, incoming: Arc<HttpIncomingRequest>) -> Result<Response<Body>> {
         let upstream_header = config::get_config()
-            .botwaf
+            .waf
             .forward
             .upstream_destination_header_name
             .as_str()

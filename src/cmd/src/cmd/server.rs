@@ -180,7 +180,10 @@ fn print_banner(config: Arc<AppConfig>, verbose: bool) {
         "http", &config.server.host, config.server.port
     );
     if config.mgmt.enabled {
-        eprintln!("     Management serve listen on: \"{}://{}\"", "http", config.mgmt.host);
+        eprintln!(
+            "     Management serve listen on: \"{}://{}:{}\"",
+            "http", config.mgmt.host, config.mgmt.port
+        );
         if config.mgmt.tokio_console.enabled {
             #[cfg(feature = "tokio-console")]
             let server_addr = &config.mgmt.tokio_console.server_bind;
@@ -211,10 +214,9 @@ pub fn build_cli() -> Command {
 
 #[allow(unused)]
 #[tokio::main]
-pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
+pub async fn handle_cli(matches: &clap::ArgMatches, verbose: bool) -> () {
     std::panic::set_hook(Box::new(on_panic));
 
-    let verbose = matches.get_flag("verbose");
     let config = config::get_config();
 
     print_banner(config.to_owned(), verbose);

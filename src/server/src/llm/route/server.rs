@@ -56,7 +56,7 @@ async fn botwaf_middleware(State(state): State<BotwafState>, req: Request<Body>,
     }
 
     // Wrap to unified incoming request.
-    let incoming = HttpIncomingRequest::new(req, config::get_config().botwaf.forward.max_body_bytes).await;
+    let incoming = HttpIncomingRequest::new(req, config::get_config().waf.forward.max_body_bytes).await;
 
     // Obtain the available IP filter instance.
     let ipfilter = IPFilterManager::get_implementation(RedisIPFilter::NAME.to_owned()).expect(&format!(
@@ -66,7 +66,7 @@ async fn botwaf_middleware(State(state): State<BotwafState>, req: Request<Body>,
 
     // Check if the request client IP address is blocked.
     if ipfilter.is_blocked(incoming.to_owned()).await.unwrap_or(false) {
-        let code = StatusCode::from_u16(config::get_config().botwaf.blocked_status_code.unwrap()).unwrap();
+        let code = StatusCode::from_u16(config::get_config().waf.blocked_status_code.unwrap()).unwrap();
         return Response::builder()
             .status(code)
             .body("Access denied by Botwaf IP Filter".into())
@@ -113,7 +113,7 @@ async fn botwaf_middleware(State(state): State<BotwafState>, req: Request<Body>,
 
             // Getting forbidded by modsec rule id.
             let mut rule_id = String::from("Masked");
-            if config::get_config().botwaf.allow_addition_modsec_info {
+            if config::get_config().waf.allow_addition_modsec_info {
                 let re = Regex::new(r#"\[id "\s*(\d+)\s*"\]"#).unwrap();
                 rule_id = intervention
                     .log()
@@ -125,14 +125,14 @@ async fn botwaf_middleware(State(state): State<BotwafState>, req: Request<Body>,
             }
 
             // Determining ModSec rejected response status code.
-            let code = match config::get_config().botwaf.blocked_status_code {
+            let code = match config::get_config().waf.blocked_status_code {
                 Some(code) => StatusCode::from_u16(code).unwrap(),
                 None => status_code,
             };
 
             return Response::builder()
                 .status(code)
-                .header(config::get_config().botwaf.blocked_header_name.to_owned(), rule_id)
+                .header(config::get_config().waf.blocked_header_name.to_owned(), rule_id)
                 .body("Access denied by Botwaf Threaten".into())
                 .unwrap();
         }

@@ -24,11 +24,11 @@ pub mod server;
 // pub mod verifier;
 
 use botwaf_server::config::config;
-use clap::{ArgMatches, Command};
+use clap::{Arg, ArgMatches, Command};
 use std::{collections::HashMap, sync::OnceLock};
 
 type SubcommandBuildFn = fn() -> Command;
-type SubcommandHandleFn = fn(&ArgMatches) -> ();
+type SubcommandHandleFn = fn(&ArgMatches, bool) -> ();
 
 static SUBCOMMAND_MAP: OnceLock<HashMap<&'static str, (SubcommandBuildFn, SubcommandHandleFn)>> = OnceLock::new();
 
@@ -82,7 +82,16 @@ pub fn execute_commands_app() -> () {
             )
             .to_owned(),
         )
-        .arg_required_else_help(true); // When no args are provided, show help.
+        .arg_required_else_help(true) // When no args are provided, show help.
+        //.help_template("{about}\n\n{usage-heading}\n\n{usage}\n\n{all-args}")
+        .arg(
+            Arg::new("verbose")
+                .short('v')
+                .long("verbose")
+                .value_name("PRINT") // Tips for the user.
+                .help("Set up global details print flag")
+                .global(true), // Global args are available to all subcommands.
+        );
 
     let subcommand_map = register_subcommand_handles();
     // Add to all subcommands.
@@ -91,13 +100,14 @@ pub fn execute_commands_app() -> () {
     }
 
     let matches = app.get_matches();
+    let verbose = matches.contains_id("verbose");
 
     // Handling to actual subcommand.
     match matches.subcommand() {
         Some((name, sub_matches)) => {
             if let Some(&(_, handler)) = subcommand_map.get(name) {
                 tracing::info!("Executing subcommand: {}", name);
-                handler(sub_matches);
+                handler(sub_matches, verbose);
             } else {
                 // panic!("Unknown subcommand: {}. Use --help for a list of available commands.", name);
                 eprintln!("Invalid commands and Use <command> --help for more information about a specific command.");
