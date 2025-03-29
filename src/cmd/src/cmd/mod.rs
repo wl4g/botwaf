@@ -18,53 +18,65 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+pub mod management;
 pub mod server;
-// pub mod standalone;
-// pub mod updater;
-// pub mod verifier;
+pub mod standalone;
+pub mod updater;
+pub mod verifier;
 
 use botwaf_server::config::config;
 use clap::{Arg, ArgMatches, Command};
-use std::{collections::HashMap, sync::OnceLock};
+use server::WebServer;
+use standalone::StandaloneServer;
+use std::{collections::BTreeMap, sync::OnceLock};
+use updater::UpdaterServer;
+use verifier::VerifierServer;
+
+/// TODO: Used jemalloc or tcmalloc as the default allocator for APM observe monitoring.
+/// Check for the allocator used: 'objdump -t target/debug/botwaf | grep mi_os_alloc'
+/// see:https://rustcc.cn/article?id=75f290cd-e8e9-4786-96dc-9a44e398c7f5
+#[global_allocator]
+// static GLOBAL: std::alloc::System = std::alloc::System;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 type SubcommandBuildFn = fn() -> Command;
 type SubcommandHandleFn = fn(&ArgMatches, bool) -> ();
 
-static SUBCOMMAND_MAP: OnceLock<HashMap<&'static str, (SubcommandBuildFn, SubcommandHandleFn)>> = OnceLock::new();
+static SUBCOMMAND_MAP: OnceLock<BTreeMap<&'static str, (SubcommandBuildFn, SubcommandHandleFn)>> = OnceLock::new();
 
-pub fn register_subcommand_handles() -> &'static HashMap<&'static str, (SubcommandBuildFn, SubcommandHandleFn)> {
+pub fn register_subcommand_handles() -> &'static BTreeMap<&'static str, (SubcommandBuildFn, SubcommandHandleFn)> {
     SUBCOMMAND_MAP.get_or_init(|| {
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert(
-            "server",
+            WebServer::COMMAND_NAME,
             (
                 // Type inference error, forced conversion need.
-                server::build_cli as SubcommandBuildFn,
-                server::handle_cli as SubcommandHandleFn,
+                WebServer::build as SubcommandBuildFn,
+                WebServer::run as SubcommandHandleFn,
             ),
         );
         map.insert(
-            "standalone",
+            StandaloneServer::COMMAND_NAME,
             (
                 // Type inference error, forced conversion need.
-                server::build_cli as SubcommandBuildFn,
-                server::handle_cli as SubcommandHandleFn,
+                StandaloneServer::build as SubcommandBuildFn,
+                StandaloneServer::run as SubcommandHandleFn,
             ),
         );
         map.insert(
-            "updater",
+            UpdaterServer::COMMAND_NAME,
             (
                 // Type inference error, forced conversion need.
-                server::build_cli as SubcommandBuildFn,
-                server::handle_cli as SubcommandHandleFn,
+                UpdaterServer::build as SubcommandBuildFn,
+                UpdaterServer::run as SubcommandHandleFn,
             ),
         );
         map.insert(
-            "verifier",
+            VerifierServer::COMMAND_NAME,
             (
                 // Type inference error, forced conversion need.
-                server::build_cli as SubcommandBuildFn,
-                server::handle_cli as SubcommandHandleFn,
+                VerifierServer::build as SubcommandBuildFn,
+                VerifierServer::run as SubcommandHandleFn,
             ),
         );
         map

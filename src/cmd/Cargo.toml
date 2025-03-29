@@ -17,6 +17,7 @@ botwaf-utils.workspace = true
 
 # Thirdparty dependencies.
 clap.workspace = true
+anyhow.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
 mimalloc.workspace = true
