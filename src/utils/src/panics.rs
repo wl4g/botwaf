@@ -18,15 +18,30 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-pub mod cgroup;
-pub mod ethers;
-pub mod httpclients;
-pub mod inets;
-pub mod mems;
-pub mod panics;
-pub mod rsa_ciphers;
-pub mod serde_beans;
-pub mod snowflake;
-pub mod tokio_signal;
-pub mod types;
-pub mod webs;
+use std::{panic, path::Path};
+
+pub struct PanicHelper {}
+
+impl PanicHelper {
+    pub fn set_hook_default() {
+        panic::set_hook(Box::new(|info| {
+            if let Some(location) = info.location() {
+                let file = location.file();
+
+                // Only print src file name instead of full path.
+                let file_name = Path::new(file).file_name().unwrap_or_default().to_string_lossy();
+
+                eprintln!(
+                    "Oh, Occur Panic Error panicked at {}:{}: {}",
+                    file_name,
+                    location.line(),
+                    info.payload()
+                        .downcast_ref::<&str>()
+                        .unwrap_or(&"<unknown panic message>")
+                );
+            } else {
+                println!("panic occurred but can't get location information...");
+            }
+        }));
+    }
+}

@@ -29,6 +29,7 @@ use botwaf_server::{
     },
     mgmt::apm,
 };
+use botwaf_utils::panics::PanicHelper;
 use botwaf_utils::tokio_signal::tokio_graceful_shutdown_signal;
 use botwaf_verifier::verifier_base::BotwafVerifierManager;
 use clap::Command;
@@ -49,11 +50,7 @@ impl VerifierServer {
     #[allow(unused)]
     #[tokio::main]
     pub async fn run(matches: &clap::ArgMatches, verbose: bool) -> () {
-        std::panic::set_hook(Box::new(|info| {
-            let info = info.to_string().replace('\n', " ");
-            tracing::error!(%info);
-            eprintln!("Oh, Occur Panic Error ::\n{}", info)
-        }));
+        PanicHelper::set_hook_default();
 
         let config = config::get_config();
 

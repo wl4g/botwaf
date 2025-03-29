@@ -32,7 +32,7 @@ use botwaf_server::{
         user_router::init as user_router,
     },
 };
-use botwaf_utils::tokio_signal::tokio_graceful_shutdown_signal;
+use botwaf_utils::{panics::PanicHelper, tokio_signal::tokio_graceful_shutdown_signal};
 use clap::Command;
 use std::{env, sync::Arc};
 use tokio::{net::TcpListener, sync::oneshot};
@@ -53,11 +53,7 @@ impl WebServer {
     #[allow(unused)]
     #[tokio::main]
     pub async fn run(matches: &clap::ArgMatches, verbose: bool) -> () {
-        std::panic::set_hook(Box::new(|info| {
-            let info = info.to_string().replace('\n', " ");
-            tracing::error!(%info);
-            eprintln!("Oh, Occur Panic Error ::\n{}", info)
-        }));
+        PanicHelper::set_hook_default();
 
         let config = config::get_config();
 
