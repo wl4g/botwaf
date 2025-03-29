@@ -54,16 +54,16 @@ impl LangchainLLMHandler {
     pub async fn new() -> Self {
         // Create the embedding openai config.
         let mut embedding_openai_config =
-            OpenAIConfig::new().with_api_base(&config::get_config().waf.llm.embedding.api_uri);
-        if let Some(api_key) = &config::get_config().waf.llm.embedding.api_key {
+            OpenAIConfig::new().with_api_base(&config::get_config().services.llm.embedding.api_uri);
+        if let Some(api_key) = &config::get_config().services.llm.embedding.api_key {
             // Default used by 'OPENAI_KEY' and 'OPENAI_BASE_URL'.
             // Not require API key to run model by Ollama default.
             embedding_openai_config = embedding_openai_config.with_api_key(api_key);
         }
-        if let Some(org_id) = &config::get_config().waf.llm.embedding.org_id {
+        if let Some(org_id) = &config::get_config().services.llm.embedding.org_id {
             embedding_openai_config = embedding_openai_config.with_org_id(org_id);
         }
-        if let Some(project_id) = &config::get_config().waf.llm.embedding.project_id {
+        if let Some(project_id) = &config::get_config().services.llm.embedding.project_id {
             embedding_openai_config = embedding_openai_config.with_org_id(project_id);
         }
 
@@ -92,31 +92,32 @@ impl LangchainLLMHandler {
             .unwrap();
 
         // Create call LLM config for openai compability.
-        let mut call_openai_config = OpenAIConfig::new().with_api_base(&config::get_config().waf.llm.generate.api_uri);
-        if let Some(api_key) = &config::get_config().waf.llm.generate.api_key {
+        let mut call_openai_config =
+            OpenAIConfig::new().with_api_base(&config::get_config().services.llm.generate.api_uri);
+        if let Some(api_key) = &config::get_config().services.llm.generate.api_key {
             call_openai_config = call_openai_config.with_api_key(api_key);
         }
-        if let Some(org_id) = &config::get_config().waf.llm.generate.org_id {
+        if let Some(org_id) = &config::get_config().services.llm.generate.org_id {
             call_openai_config = call_openai_config.with_org_id(org_id);
         }
-        if let Some(project_id) = &config::get_config().waf.llm.generate.project_id {
+        if let Some(project_id) = &config::get_config().services.llm.generate.project_id {
             call_openai_config = call_openai_config.with_org_id(project_id);
         }
 
         // Create the call LLM client for openai compability.
         let call_opts = CallOptions::new()
-            .with_max_tokens(config::get_config().waf.llm.generate.max_tokens)
-            .with_temperature(config::get_config().waf.llm.generate.temperature)
-            .with_candidate_count(config::get_config().waf.llm.generate.candidate_count)
+            .with_max_tokens(config::get_config().services.llm.generate.max_tokens)
+            .with_temperature(config::get_config().services.llm.generate.temperature)
+            .with_candidate_count(config::get_config().services.llm.generate.candidate_count)
             // TODO: whether the support configuration of this items?
             // .with_functions(Vec::new())
             // .with_stop_words(Vec::new())
-            .with_top_k(config::get_config().waf.llm.generate.top_k)
-            .with_top_p(config::get_config().waf.llm.generate.top_p)
+            .with_top_k(config::get_config().services.llm.generate.top_k)
+            .with_top_p(config::get_config().services.llm.generate.top_p)
             // .with_seed(0)
             .with_function_call_behavior(FunctionCallBehavior::Auto);
         let openai_llm = OpenAI::new(call_openai_config)
-            .with_model(config::get_config().waf.llm.generate.model.to_owned())
+            .with_model(config::get_config().services.llm.generate.model.to_owned())
             .with_options(call_opts);
 
         // Create the this updater handler instance.

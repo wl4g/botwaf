@@ -55,7 +55,7 @@ impl BotwafUpdaterManager {
     pub async fn init() {
         tracing::info!("Register All Botwaf updaters ...");
 
-        for config in &config::get_config().waf.updaters {
+        for config in &config::get_config().services.updaters {
             if !config.enabled {
                 tracing::info!("Skipping implementation updater: {}", config.name);
                 continue;
@@ -75,7 +75,7 @@ impl BotwafUpdaterManager {
             }
         }
         tracing::info!("Initializing All Botwaf updaters ...");
-        for config in &config::get_config().waf.updaters {
+        for config in &config::get_config().services.updaters {
             if !config.enabled {
                 tracing::info!("Skipping implementation updater: {}", config.name);
                 continue;

@@ -74,8 +74,8 @@ pub struct AppConfigProperties {
     pub appdb: AppDBProperties,
     #[serde(default = "VectorDBProperties::default")]
     pub vecdb: VectorDBProperties,
-    #[serde(default = "WafProperties::default")]
-    pub waf: WafProperties,
+    #[serde(default = "ServicesProperties::default")]
+    pub services: ServicesProperties,
 }
 
 // Server Properties.
@@ -374,10 +374,10 @@ pub struct PgVectorDBProperties {
     pub inner: PostgresPropertiesBase,
 }
 
-// Waf Properties.
+// Services Properties.
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct WafProperties {
+pub struct ServicesProperties {
     // Notice: Nginx support status code range: 300-599.
     #[serde(rename = "blocked-status-code")]
     pub blocked_status_code: Option<u16>,
@@ -524,7 +524,7 @@ impl AppConfigProperties {
             cache: CacheProperties::default(),
             appdb: AppDBProperties::default(),
             vecdb: VectorDBProperties::default(),
-            waf: WafProperties::default(),
+            services: ServicesProperties::default(),
         }
     }
 }
@@ -609,7 +609,7 @@ impl Default for SwaggerProperties {
             // version: "1.0.0".to_string(),
             // license_name: "Apache 2.0".to_string(),
             // license_url: "https://www.apache.org/licenses/LICENSE-2.0".to_string(),
-            // contact_name: "MyWebnote API".to_string(),
+            // contact_name: "Botwaf API".to_string(),
             // contact_email: "jameswong1376@gmail.com".to_string(),
             // contact_url: "https://github.com/wl4g/my-webnote".to_string(),
             // terms_of_service: "api/terms-of-service".to_string(),
@@ -772,7 +772,7 @@ impl Default for MongoAppDBProperties {
     fn default() -> Self {
         MongoAppDBProperties {
             url: Some(String::from("mongodb://localhost:27017")),
-            database: Some(String::from("mywebnote")),
+            database: Some(String::from("botwaf")),
         }
     }
 }
@@ -804,11 +804,11 @@ impl Deref for PgVectorDBProperties {
     }
 }
 
-// Waf Properties impls.
+// Services Properties impls.
 
-impl Default for WafProperties {
+impl Default for ServicesProperties {
     fn default() -> Self {
-        WafProperties {
+        ServicesProperties {
             blocked_status_code: None,
             blocked_header_name: String::from("X-Botwaf-Blocked"),
             allow_addition_modsec_info: true,

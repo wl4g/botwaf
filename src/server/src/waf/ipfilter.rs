@@ -74,7 +74,10 @@ impl IPFilterManager {
     pub async fn init() {
         tracing::info!("Register Botwaf Redis IPFilter ...");
         let redis_cache = Arc::new(StringRedisCache::new(&config::get_config().cache.redis));
-        let handler = RedisIPFilter::new(redis_cache, config::get_config().waf.blocked_header_name.to_owned());
+        let handler = RedisIPFilter::new(
+            redis_cache,
+            config::get_config().services.blocked_header_name.to_owned(),
+        );
         match Self::get()
             .write() // If acquire fails, then it block until acquired.
             .unwrap() // If acquire fails, then it should panic.

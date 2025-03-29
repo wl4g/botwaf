@@ -59,7 +59,7 @@ swagger:
   # version: "1.0.0"
   # license_name: "Apache 2.0"
   # license_url: "https://www.apache.org/licenses/LICENSE-2.0"
-  # contact_name: "MyWebnote API"
+  # contact_name: "Botwaf API"
   # contact_email: "jameswong1376@gmail.com"
   # contact_url: "https://github.com/wl4g/my-webnote"
   # terms_of_service: "api/terms-of-service"
@@ -154,7 +154,7 @@ vecdb:
     max-connections: 10
     use-ssl: false
 
-waf:
+services:
   # Blocked response status code when ModSecurity engine forbidded. If not set, the modsec matched status code.
   # Notice: Nginx support status code range: 300-599.
   blocked-status-code: 433

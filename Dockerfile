@@ -18,7 +18,10 @@
 # covered by this license must also be released under the GNU GPL license.
 # This includes modifications and derived works.
 #
-### Stage 1: Infrastructure libraries installation. ###
+
+#####################################################
+### STAGE 1: Build Infra Libraries Tooling Layer. ###
+#####################################################
 FROM registry.cn-shenzhen.aliyuncs.com/wl4g/rust:1.85 as base
 
 # Set up fast apt sources. (internal: http://mirrors.cloud.aliyuncs.com, external: http://mirrors.aliyun.com)
@@ -28,29 +31,41 @@ FROM registry.cn-shenzhen.aliyuncs.com/wl4g/rust:1.85 as base
 # the default source of debian-12 and only supports libmodsecurity-3.0.9.
 #
 RUN echo > /etc/apt/sources.list && \
-    echo 'deb http://mirrors.aliyun.com/debian bookworm main contrib non-free non-free-firmware' > /etc/apt/sources.list && \
-    echo 'deb-src http://mirrors.aliyun.com/debian bookworm main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
-    echo 'deb http://mirrors.aliyun.com/debian-security bookworm-security main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
-    echo 'deb-src http://mirrors.aliyun.com/debian-security bookworm-security main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
-    echo 'deb http://mirrors.aliyun.com/debian bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
-    echo 'deb-src http://mirrors.aliyun.com/debian bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
+    echo 'deb http://mirrors.cloud.aliyuncs.com/debian bookworm main contrib non-free non-free-firmware' > /etc/apt/sources.list && \
+    echo 'deb-src http://mirrors.cloud.aliyuncs.com/debian bookworm main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
+    echo 'deb http://mirrors.cloud.aliyuncs.com/debian-security bookworm-security main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
+    echo 'deb-src http://mirrors.cloud.aliyuncs.com/debian-security bookworm-security main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
+    echo 'deb http://mirrors.cloud.aliyuncs.com/debian bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
+    echo 'deb-src http://mirrors.cloud.aliyuncs.com/debian bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
     apt-get update && \
-    apt-get install -y pkg-config && \
+    apt-get install -y libmodsecurity3 libmodsecurity-dev pkg-config && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-### Stage 2: Dependencies installation (for caching dependencies) ###
+#################################################
+### STAGE 2: Build Dependencies Cached Layer. ###
+#################################################
 FROM base as deps
 WORKDIR /usr/src/botwaf
-# Just copy the files used to build the dependencies.
+# Copy cargo configuration files and directory structure
 COPY Cargo.toml Cargo.lock ./
-# Create an empty main.rs that triggers dependency install but does not build the actual project.
-RUN mkdir -p src && \
+COPY src ./src
+# Remove all files except Cargo.toml
+# 1. Create minimal source structure for each crate
+# 2. Create root main.rs
+# 3. Build all dependencies
+# 4. Clean up all source files
+RUN find src -type f -not -name "Cargo.toml" -delete && \
+    find src -type d -name src -o -path "*/src" | xargs -I{} mkdir -p {} && \
+    find src -type d -name src | xargs -I{} touch {}/lib.rs && \
+    mkdir -p src && \
     echo "fn main() {}" > src/main.rs && \
     cargo build --release && \
-    rm -rf src
+    find . -name "*.rs" -delete
 
-### Stage 3: Application build. ###
+################################################
+### STAGE 3: Build Application Source Layer. ###
+################################################
 FROM base as builder
 WORKDIR /usr/src/botwaf
 # Copy the build cache of dependency Stage 2
@@ -61,14 +76,16 @@ COPY . .
 # Compile the application source files.
 RUN cargo install --path .
 
-### Stage 4: Application runtime. ###
+#################################################
+### STAGE 4: Build Application Runtime Layer. ###
+#################################################
 FROM registry.cn-shenzhen.aliyuncs.com/wl4g/debian:bookworm
 # Set up fast apt sources. (internal: http://mirrors.cloud.aliyuncs.com, external: http://mirrors.aliyun.com)
-RUN echo 'deb http://mirrors.aliyun.com/debian bookworm main contrib non-free non-free-firmware' > /etc/apt/sources.list && \
-    echo 'deb http://mirrors.aliyun.com/debian-security bookworm-security main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
-    echo 'deb http://mirrors.aliyun.com/debian bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
+RUN echo 'deb http://mirrors.cloud.aliyuncs.com/debian bookworm main contrib non-free non-free-firmware' > /etc/apt/sources.list && \
+    echo 'deb http://mirrors.cloud.aliyuncs.com/debian-security bookworm-security main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
+    echo 'deb http://mirrors.cloud.aliyuncs.com/debian bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
     apt-get update && \
-    apt-get install -y libssl3 && \
+    apt-get install -y tini libmodsecurity3 libssl3 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -76,4 +93,4 @@ RUN echo 'deb http://mirrors.aliyun.com/debian bookworm main contrib non-free no
 COPY --from=builder /usr/local/cargo/bin/botwaf /usr/local/bin/botwaf
 
 # Set the run entrypoint of the container.
-ENTRYPOINT ["botwaf"]
+ENTRYPOINT ["/sbin/tini", "-s", "-g", "--", "botwaf"]

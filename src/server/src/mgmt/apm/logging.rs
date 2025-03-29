@@ -169,7 +169,7 @@ pub(super) fn default_log_levels_layer() -> EnvFilter {
     EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "debug".into())
         // .add_directive("debug".parse().unwrap()) // default level.
-        .add_directive("mywebnote=debug".parse().unwrap())
+        .add_directive("botwaf=debug".parse().unwrap())
         .add_directive("hyper=warn".parse().unwrap())
         .add_directive("tokio=trace".parse().unwrap()) // Notice: Must be at trace level to collect
 }
