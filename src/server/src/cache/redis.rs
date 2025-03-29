@@ -35,7 +35,13 @@ pub struct StringRedisCache {
 
 impl StringRedisCache {
     pub fn new(config: &RedisProperties) -> Self {
-        tracing::info!("Initializing redis with config: {:?}", config);
+        // Safety replace to desensitized password.
+        let mut desensitized = config.clone();
+        desensitized.password = desensitized
+            .password
+            .map(|f| f.chars().map(|_| '*').collect::<String>());
+
+        tracing::info!("Initializing redis cluster client with: {:?}", desensitized);
 
         let mut builder = ClusterClientBuilder::new(config.nodes.clone());
         if config.username.is_some() {
@@ -63,8 +69,7 @@ impl StringRedisCache {
             builder = builder.read_from_replicas();
         }
         let client = builder.build().expect("Failed to build redis cluster client");
-
-        tracing::info!("Initialized the redis with config: {:?}", config);
+        tracing::info!("Initialized the redis cluster client.");
 
         StringRedisCache {
             client: Arc::new(client),

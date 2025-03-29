@@ -763,6 +763,7 @@ dependencies = [
  "oauth2",
  "openidconnect",
  "openssl",
+ "regex",
  "reqwest 0.12.15",
  "serde",
  "serde_json",

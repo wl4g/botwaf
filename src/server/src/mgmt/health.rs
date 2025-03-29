@@ -18,16 +18,14 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::collections::HashMap;
-
-use async_trait::async_trait;
-use axum::{extract::State, response::IntoResponse, routing::get, Router};
-use hyper::StatusCode;
-use serde::Serialize;
-
 use crate::config::config::{AppDBType, CacheProvider};
 use crate::context::state::BotwafState;
+use async_trait::async_trait;
+use axum::{extract::State, response::IntoResponse, routing::get, Router};
 use botwaf_types::{user::User, PageRequest};
+use hyper::StatusCode;
+use serde::Serialize;
+use std::collections::HashMap;
 
 pub(crate) const HEALTHZ_URI: &str = "/_/healthz";
 // TODO Addidtional more health checkers.
@@ -47,7 +45,7 @@ pub(crate) struct HealthCheckResult {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct SQLiteChecker {}
+pub struct SQLiteChecker {}
 
 impl SQLiteChecker {
     pub fn new() -> Self {
@@ -91,7 +89,7 @@ impl HealthChecker for SQLiteChecker {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct MongoChecker {}
+pub struct MongoChecker {}
 
 impl MongoChecker {
     pub fn new() -> Self {
@@ -135,7 +133,7 @@ impl HealthChecker for MongoChecker {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct RedisClusterChecker {}
+pub struct RedisClusterChecker {}
 
 impl RedisClusterChecker {
     pub fn new() -> Self {

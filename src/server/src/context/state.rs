@@ -47,9 +47,9 @@ pub struct BotwafState {
     pub sqlite_checker: SQLiteChecker,
     pub mongo_checker: MongoChecker,
     pub redis_cluster_checker: RedisClusterChecker,
-    // The System repositories.
+    // The System Module repositories.
     pub user_repo: Arc<Mutex<RepositoryContainer<User>>>,
-    // The Application repositories.
+    // The Service Module repositories.
     pub modsec_engine: Arc<ModSecurity>,
     pub modsec_rules: Arc<Rules>,
     pub llm_handler: Arc<dyn ILLMHandler + Send + Sync>,

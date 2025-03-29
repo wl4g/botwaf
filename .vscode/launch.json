@@ -42,8 +42,8 @@
                 //"BOTWAF_CFG_VERBOSE": "true"
             },
             "args": [
-                // "standalone"
-                "server"
+                "standalone"
+                // "server"
                 // "updater"
                 // "verifier"
             ],

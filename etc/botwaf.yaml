@@ -114,8 +114,8 @@ cache:
     eviction-policy: LRU
   redis:
     nodes: ["redis://127.0.0.1:6379"]
-    #username: "<YOUR_REDIS_USERNAME>" # eg: "default"
-    #password: "<YOUR_REDIS_PASSWORD>" # eg: "bitnami", refer to: .env
+    username: "default" # eg: "default"
+    password: "bitnami" # eg: "bitnami", refer to: .env
     connection-timeout: 3000
     response-timeout: 6000
     retries: 1
@@ -130,7 +130,7 @@ appdb:
   postgres: # App DB for PostgreSQL
     host: "127.0.0.1"
     port: 5432
-    database: "botwaf_sys"
+    database: "postgres"
     schema: "public"
     username: postgres
     password: "changeit"
@@ -146,7 +146,7 @@ vecdb:
   pg-vector: # Vector DB for PostgreSQL
     host: "127.0.0.1"
     port: 5432
-    database: "botwaf_vecdb"
+    database: "postgres"
     schema: "public"
     username: "postgres"
     password: "changeit"

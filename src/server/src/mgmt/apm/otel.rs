@@ -18,9 +18,7 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::sync::Arc;
-use std::time::Duration;
-
+use crate::config::config::AppConfig;
 use opentelemetry::{global, KeyValue};
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_otlp::{new_exporter, ExportConfig, Protocol};
@@ -28,8 +26,8 @@ use opentelemetry_sdk::runtime::Tokio;
 use opentelemetry_sdk::trace::Config;
 use opentelemetry_sdk::trace::Tracer;
 use opentelemetry_sdk::Resource;
-
-use crate::config::config::AppConfig;
+use std::sync::Arc;
+use std::time::Duration;
 
 pub async fn create_otel_tracer(config: &Arc<AppConfig>) -> Option<Tracer> {
     let mut tracer = None;

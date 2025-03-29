@@ -29,7 +29,7 @@ pub struct ManagementServer {}
 
 impl ManagementServer {
     #[allow(unused)]
-    pub async fn start(config: &Arc<AppConfig>, verbose: bool, signal_sender: oneshot::Sender<()>) -> JoinHandle<()> {
+    pub async fn start(config: &Arc<AppConfig>, verbose: bool, signal_s: oneshot::Sender<()>) -> JoinHandle<()> {
         let (prometheus_layer, _) = PrometheusMetricLayer::pair();
 
         let app: Router = Router::new()
@@ -41,13 +41,13 @@ impl ManagementServer {
 
         tokio::spawn(async move {
             // When started call to signal sender.
-            let _ = signal_sender.send(());
+            let _ = signal_s.send(());
             axum::serve(
                 tokio::net::TcpListener::bind(&bind_addr).await.unwrap(),
                 app.into_make_service(),
             )
             .await
-            .unwrap_or_else(|e| panic!("Error starting management server: {}", e));
+            .unwrap_or_else(|e| panic!("Error starting Management server: {}", e));
         })
     }
 }

@@ -319,44 +319,28 @@ curl 'https://keycloak.myapp.com/realms/master/.well-known/openid-configuration'
   }
 }
 */
-pub async fn create_oidc_client(oidc_config: &OidcProperties) -> Option<CoreClient> {
-    if oidc_config.enabled.unwrap_or(false) {
-        let issuer_url = IssuerUrl::new(
-            oidc_config
-                .issue_url
-                .to_owned()
-                .expect("Missing 'issue_url' configured"),
-        )
-        .expect("Invalid 'issue_url' configured");
+pub async fn create_oidc_client(config: &OidcProperties) -> Option<CoreClient> {
+    if config.enabled.unwrap_or(false) {
+        let issuer_url = IssuerUrl::new(config.issue_url.to_owned().expect("Missing issue url configured"))
+            .expect("Invalid issue url configured");
 
-        let client_id = ClientId::new(
-            oidc_config
-                .client_id
-                .to_owned()
-                .expect("Missing 'client_id' configured"),
-        );
-
+        let client_id = ClientId::new(config.client_id.to_owned().expect("Missing client id configured"));
         let client_secret = ClientSecret::new(
-            oidc_config
+            config
                 .client_secret
                 .to_owned()
-                .expect("Missing 'client_id' configured"),
+                .expect("Missing client secret configured"),
         );
 
-        let redirect_url = RedirectUrl::new(
-            oidc_config
-                .redirect_url
-                .to_owned()
-                .expect("Missing 'redirect_url' configured"),
-        )
-        .expect("Invalid 'redirect_url' configured");
+        let redirect_url = RedirectUrl::new(config.redirect_url.to_owned().expect("Missing redirect url configured"))
+            .expect("Invalid redirect url configured");
 
-        let provider_metadata = CoreProviderMetadata::discover_async(issuer_url, async_http_client)
+        let metadata = CoreProviderMetadata::discover_async(issuer_url, async_http_client)
             .await
-            .expect("Failed to discover provider metadata");
+            .expect("Failed to oidc discover metadata");
 
-        let client = CoreClient::from_provider_metadata(provider_metadata, client_id, Some(client_secret))
-            .set_redirect_uri(redirect_url);
+        let client =
+            CoreClient::from_provider_metadata(metadata, client_id, Some(client_secret)).set_redirect_uri(redirect_url);
 
         Some(client)
     } else {

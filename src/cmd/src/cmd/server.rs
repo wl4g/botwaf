@@ -18,6 +18,7 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use crate::cmd::management::ManagementServer;
 use axum::Router;
 use botwaf_server::{
     config::{
@@ -38,8 +39,6 @@ use std::{env, sync::Arc};
 use tokio::{net::TcpListener, sync::oneshot};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
-
-use crate::cmd::management::ManagementServer;
 
 pub struct WebServer {}
 
@@ -66,20 +65,27 @@ impl WebServer {
         let signal_handle = ManagementServer::start(&config, true, signal_s).await;
 
         signal_r.await.expect("Failed to start Management server.");
-        tracing::info!("Management server is ready");
+        tracing::info!("Management server is started");
 
-        Self::start(&config, true).await;
+        Self::start(&config, true, None).await;
 
         signal_handle.await.unwrap();
     }
 
     #[allow(unused)]
-    async fn start(config: &Arc<AppConfig>, verbose: bool) {
+    pub async fn start(config: &Arc<AppConfig>, verbose: bool, addition_router: Option<Router<BotwafState>>) {
         let app_state = BotwafState::new(&config).await;
-        tracing::info!("Register Web server middlewares ...");
 
         // 1. Merge the biz modules routes.
-        let expose_router = Router::new().merge(auth_router()).merge(user_router());
+        tracing::info!("Register Web server app routers ...");
+        let mut expose_router = Router::new().merge(auth_router()).merge(user_router());
+
+        // 1.1 Merge the addition router.
+        expose_router = if let Some(addition_router) = addition_router {
+            expose_router.merge(addition_router)
+        } else {
+            expose_router
+        };
 
         // 2. Merge of all routes.
         let mut app_router = match &config.server.context_path {
@@ -99,6 +105,7 @@ impl WebServer {
 
         // 3. Merge the swagger router.
         if config.swagger.enabled {
+            tracing::info!("Register Web server swagger middlewares ...");
             app_router = app_router.merge(swagger::init(&config));
         }
 
@@ -107,6 +114,7 @@ impl WebServer {
         // The later the higher the priority? For example, if auth_middleware is set at the end, it will
         // enter when requesting '/', otherwise it will not enter if it is set at the front, and will
         // directly enter handle_root().
+        tracing::info!("Register Web server auth middlewares ...");
         app_router = app_router.layer(
             ServiceBuilder::new()
                 .layer(axum::middleware::from_fn_with_state(app_state, auth_middleware))

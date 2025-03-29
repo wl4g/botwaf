@@ -21,7 +21,7 @@
 use std::sync::Arc;
 
 use lazy_static::lazy_static;
-use prometheus::{ Registry, Counter, Histogram, Encoder, TextEncoder };
+use prometheus::{Counter, Encoder, Histogram, Registry, TextEncoder};
 
 use crate::config::config::AppConfig;
 
@@ -53,13 +53,12 @@ pub async fn handle_metrics() -> String {
 #[allow(unused)]
 pub async fn init_metrics(config: &Arc<AppConfig>) {
     if config.mgmt.enabled {
-        tracing::info!("Custom metrics starting ...");
-        REGISTRY.register(Box::new(MY_HTTP_REQUESTS_TOTAL.clone())).expect(
-            "collector can be registered"
-        );
-        REGISTRY.register(Box::new(MY_HTTP_REQUEST_DURATION.clone())).expect(
-            "collector can be registered"
-        );
-        // Register more metrics...
+        tracing::info!("Register addition metrics ...");
+        REGISTRY
+            .register(Box::new(MY_HTTP_REQUESTS_TOTAL.clone()))
+            .expect("collector can be registered");
+        REGISTRY
+            .register(Box::new(MY_HTTP_REQUEST_DURATION.clone()))
+            .expect("collector can be registered");
     }
 }

@@ -22,11 +22,9 @@ use crate::cmd::management::ManagementServer;
 use axum::Router;
 use botwaf_server::config::config::AppConfig;
 use botwaf_server::context::state::BotwafState;
+use botwaf_server::mgmt::health::init as health_router;
 use botwaf_server::{
-    config::{
-        config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
-        constant::URI_HEALTHZ,
-    },
+    config::config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
     mgmt::apm,
 };
 use botwaf_utils::panics::PanicHelper;
@@ -89,7 +87,7 @@ impl VerifierServer {
             }
         };
 
-        let app_router = Router::new().merge(Self::health_router(app_state));
+        let app_router = Router::new().merge(health_router()).with_state(app_state);
         match axum::serve(listener, app_router.into_make_service())
             .with_graceful_shutdown(tokio_graceful_shutdown_signal())
             // .tcp_nodelay(true)
@@ -158,12 +156,5 @@ impl VerifierServer {
             eprintln!("Configuration loaded: {}", config_json);
         }
         eprintln!("");
-    }
-
-    fn health_router(_: BotwafState) -> Router {
-        Router::new().route(
-            URI_HEALTHZ,
-            axum::routing::get(|| async { "Botwaf Verifier Server is Running!" }),
-        )
     }
 }

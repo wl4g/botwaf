@@ -18,10 +18,12 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use super::server::WebServer;
 use crate::cmd::management::ManagementServer;
 use axum::Router;
 use botwaf_server::config::config::AppConfig;
 use botwaf_server::context::state::BotwafState;
+use botwaf_server::mgmt::health;
 use botwaf_server::{
     config::{
         config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
@@ -30,11 +32,9 @@ use botwaf_server::{
     mgmt::apm,
 };
 use botwaf_utils::panics::PanicHelper;
-use botwaf_utils::tokio_signal::tokio_graceful_shutdown_signal;
 use clap::Command;
+use std::env;
 use std::sync::Arc;
-use std::{env, panic};
-use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
 pub struct StandaloneServer {}
@@ -71,35 +71,7 @@ impl StandaloneServer {
 
     #[allow(unused)]
     async fn start(config: &Arc<AppConfig>, verbose: bool) {
-        let app_state = BotwafState::new(&config).await;
-
-        let bind_addr = config.server.host.clone() + ":" + &config.server.port.to_string();
-        tracing::info!("Starting Botwaf Standalone server on {}", bind_addr);
-        let listener = match TcpListener::bind(&bind_addr).await {
-            Ok(l) => {
-                tracing::info!("Botwaf Standalone server is ready on {}", bind_addr);
-                l
-            }
-            Err(e) => {
-                tracing::error!("Failed to bind to {}: {}", bind_addr, e);
-                panic!("Failed to bind to {}: {}", bind_addr, e);
-            }
-        };
-
-        let app_router = Router::new().merge(Self::health_router(app_state));
-        match axum::serve(listener, app_router.into_make_service())
-            .with_graceful_shutdown(tokio_graceful_shutdown_signal())
-            // .tcp_nodelay(true)
-            .await
-        {
-            Ok(_) => {
-                tracing::info!("Botwaf Standalone server shut down gracefully");
-            }
-            Err(e) => {
-                tracing::error!("Error running web server: {}", e);
-                panic!("Error start Botwaf Standalone server: {}", e);
-            }
-        }
+        WebServer::start(config, verbose, None).await;
     }
 
     fn print_banner(config: Arc<AppConfig>, verbose: bool) {
@@ -155,12 +127,5 @@ impl StandaloneServer {
             eprintln!("Configuration loaded: {}", config_json);
         }
         eprintln!("");
-    }
-
-    fn health_router(_: BotwafState) -> Router {
-        Router::new().route(
-            URI_HEALTHZ,
-            axum::routing::get(|| async { "Botwaf Standalone Server is Running!" }),
-        )
     }
 }

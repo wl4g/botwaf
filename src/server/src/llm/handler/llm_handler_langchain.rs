@@ -53,6 +53,7 @@ pub struct LangchainLLMHandler {
 impl LangchainLLMHandler {
     pub async fn new() -> Self {
         // Create the embedding openai config.
+        let llm_config = &config::get_config().services.llm;
         let mut embedding_openai_config =
             OpenAIConfig::new().with_api_base(&config::get_config().services.llm.embedding.api_uri);
         if let Some(api_key) = &config::get_config().services.llm.embedding.api_key {
@@ -67,19 +68,15 @@ impl LangchainLLMHandler {
             embedding_openai_config = embedding_openai_config.with_org_id(project_id);
         }
 
+        let vecdb_config = &config::get_config().vecdb;
         let pgconn_url = format!(
             "postgresql://{}:{}@{}:{}/{}?schema={}",
-            config::get_config().vecdb.pg_vector.username,
-            config::get_config()
-                .vecdb
-                .pg_vector
-                .password
-                .to_owned()
-                .unwrap_or_default(),
-            config::get_config().vecdb.pg_vector.host,
-            config::get_config().vecdb.pg_vector.port,
-            config::get_config().vecdb.pg_vector.database,
-            config::get_config().vecdb.pg_vector.schema,
+            vecdb_config.pg_vector.username,
+            vecdb_config.pg_vector.password.to_owned().unwrap_or_default(),
+            vecdb_config.pg_vector.host,
+            vecdb_config.pg_vector.port,
+            vecdb_config.pg_vector.database,
+            vecdb_config.pg_vector.schema,
         );
         // Create the knowledge vector store for PG vector.
         let pgvec_store = StoreBuilder::new()
@@ -92,15 +89,14 @@ impl LangchainLLMHandler {
             .unwrap();
 
         // Create call LLM config for openai compability.
-        let mut call_openai_config =
-            OpenAIConfig::new().with_api_base(&config::get_config().services.llm.generate.api_uri);
-        if let Some(api_key) = &config::get_config().services.llm.generate.api_key {
+        let mut call_openai_config = OpenAIConfig::new().with_api_base(&llm_config.generate.api_uri);
+        if let Some(api_key) = &llm_config.generate.api_key {
             call_openai_config = call_openai_config.with_api_key(api_key);
         }
-        if let Some(org_id) = &config::get_config().services.llm.generate.org_id {
+        if let Some(org_id) = &llm_config.generate.org_id {
             call_openai_config = call_openai_config.with_org_id(org_id);
         }
-        if let Some(project_id) = &config::get_config().services.llm.generate.project_id {
+        if let Some(project_id) = &llm_config.generate.project_id {
             call_openai_config = call_openai_config.with_org_id(project_id);
         }
 

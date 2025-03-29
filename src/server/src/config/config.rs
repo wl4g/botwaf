@@ -358,7 +358,7 @@ pub struct MongoAppDBProperties {
 pub struct VectorDBProperties {
     #[serde(rename = "type")]
     pub db_type: VectorDBType,
-    #[serde(rename = "pg-vec-db", default = "PgVectorDBProperties::default")]
+    #[serde(rename = "pg-vector", default = "PgVectorDBProperties::default")]
     pub pg_vector: PgVectorDBProperties,
 }
 
