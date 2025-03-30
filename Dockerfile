@@ -22,7 +22,7 @@
 #####################################################
 ### STAGE 1: Build Infra Libraries Tooling Layer. ###
 #####################################################
-FROM registry.cn-shenzhen.aliyuncs.com/wl4g/rust:1.85 as base
+FROM registry.cn-shenzhen.aliyuncs.com/wl4g/rust:1.85 AS base
 
 # Set up fast apt sources. (internal: http://mirrors.cloud.aliyuncs.com, external: http://mirrors.aliyun.com)
 #
@@ -45,7 +45,7 @@ RUN echo > /etc/apt/sources.list && \
 #################################################
 ### STAGE 2: Build Dependencies Cached Layer. ###
 #################################################
-FROM base as deps
+FROM base AS deps
 WORKDIR /usr/src/botwaf
 # Copy cargo configuration files and directory structure
 COPY Cargo.toml Cargo.lock ./
@@ -58,15 +58,15 @@ COPY src ./src
 RUN find src -type f -not -name "Cargo.toml" -delete && \
     find src -type d -name src -o -path "*/src" | xargs -I{} mkdir -p {} && \
     find src -type d -name src | xargs -I{} touch {}/lib.rs && \
-    mkdir -p src && \
-    echo "fn main() {}" > src/main.rs && \
+    mkdir -p src/cmd/src/bin && \
+    echo "fn main() {}" > src/cmd/src/bin/dummy.rs && \
     cargo build --release && \
     find . -name "*.rs" -delete
 
 ################################################
 ### STAGE 3: Build Application Source Layer. ###
 ################################################
-FROM base as builder
+FROM base AS builder
 WORKDIR /usr/src/botwaf
 # Copy the build cache of dependency Stage 2
 COPY --from=deps /usr/src/botwaf/target target
