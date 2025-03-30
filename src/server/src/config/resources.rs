@@ -29,9 +29,16 @@ struct Asset;
 
 pub async fn handle_static(State(state): State<BotwafState>, uri: Uri) -> impl IntoResponse {
     let mut path = auths::clean_context_path(&state.config.server.context_path, uri.path());
-    path = path.trim_start_matches("/static/").trim_start_matches('/');
+    path = path.trim_start_matches("/static/");
 
-    let context_path = &state.config.server.context_path.to_owned().unwrap_or_default();
+    // If there are context path is '/' then should be use '' for prevent such as the '//static/img/logo.jpg'
+    let ctx_path = state
+        .config
+        .server
+        .context_path
+        .to_owned()
+        .map(|cp| if cp == "/" { String::new() } else { cp })
+        .unwrap_or_default();
     let swagger_ui_path = &state.config.swagger.ui_path;
 
     match Asset::get(path) {
@@ -42,7 +49,7 @@ pub async fn handle_static(State(state): State<BotwafState>, uri: Uri) -> impl I
                 let html_content = String::from_utf8_lossy(&content.data);
                 // TODO: Use template render engine.
                 let modified_content = html_content
-                    .replace(r#"{{context_path}}"#, context_path)
+                    .replace(r#"{{context_path}}"#, &ctx_path)
                     .replace("{{swagger_ui_path}}", swagger_ui_path);
                 (
                     StatusCode::OK,

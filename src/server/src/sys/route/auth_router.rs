@@ -68,7 +68,7 @@ pub const AUTH_CALLBACK_OIDC_URI: &str = "/auth/callback/oidc";
 pub const AUTH_CALLBACK_GITHUB_URI: &str = "/auth/callback/github";
 pub const AUTH_WALLET_ETHERS_VERIFY_URI: &str = "/auth/wallet/ethers/verify";
 pub const AUTH_LOGOUT_URI: &str = "/auth/logout";
-pub const STATIC_RESOURCES_URI: &str = "/static/{*file}";
+pub const STATIC_RESOURCES_PREFIX_URI: &str = "/static";
 
 pub const EXCLUDED_PATHS: [&str; 8] = [
     AUTH_PASSWORD_PUBKEY_URI,
@@ -78,12 +78,13 @@ pub const EXCLUDED_PATHS: [&str; 8] = [
     AUTH_CALLBACK_OIDC_URI,
     AUTH_CALLBACK_GITHUB_URI,
     AUTH_WALLET_ETHERS_VERIFY_URI,
-    STATIC_RESOURCES_URI,
+    STATIC_RESOURCES_PREFIX_URI,
 ];
 
 pub const CSRF_TOKEN_NAME: &str = "csrf_token";
 
 pub fn init() -> Router<BotwafState> {
+    let static_resources_uri = STATIC_RESOURCES_PREFIX_URI.to_owned() + "/{*file}";
     Router::new()
         //.route(ROOT_URI, get(handle_page_root))
         .route(AUTH_PASSWORD_PUBKEY_URI, post(handle_password_pubkey))
@@ -94,7 +95,7 @@ pub fn init() -> Router<BotwafState> {
         .route(AUTH_CALLBACK_GITHUB_URI, get(handle_callback_github))
         .route(AUTH_WALLET_ETHERS_VERIFY_URI, post(handle_wallet_ethers_verify))
         .route(AUTH_LOGOUT_URI, get(handle_logout))
-        .route(STATIC_RESOURCES_URI, get(handle_static))
+        .route(static_resources_uri.as_str(), get(handle_static))
         //.without_v07_checks()
         .fallback(handle_page_404) // Global auto internal forwarding when not found.
         .layer(CookieManagerLayer::new())
@@ -108,7 +109,8 @@ pub async fn auth_middleware(State(state): State<BotwafState>, req: Request<Body
     // 1. Exclude paths that don't require authentication.
     // 1.1 Paths that must be excluded according to the authentication mechanism's requirements.
     // The root path is also excluded by default.
-    if EXCLUDED_PATHS.contains(&path) {
+    // each match with start.
+    if EXCLUDED_PATHS.iter().any(|p| path.starts_with(p)) {
         return next.run(req).await;
     }
 

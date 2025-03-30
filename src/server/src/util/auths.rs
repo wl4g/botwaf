@@ -146,6 +146,7 @@ pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 pub fn clean_context_path<'a>(ctx_path: &'a Option<String>, path: &'a str) -> &'a str {
     match &ctx_path {
         // Remove the prefix context path.
+        Some(cp) if cp == "/" => path,
         Some(cp) => path.strip_prefix(cp.as_str()).unwrap_or(&path),
         None => path,
     }
@@ -159,9 +160,9 @@ pub fn join_context_path(config: &AppConfig, path: String) -> String {
     if schema.starts_with("http") {
         return path;
     }
-
     match &config.server.context_path {
         // Add the prefix context path.
+        Some(cp) if cp == "/" => path,
         Some(cp) => format!("{}{}", cp, path),
         None => path,
     }
