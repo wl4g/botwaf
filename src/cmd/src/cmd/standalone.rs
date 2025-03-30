@@ -20,15 +20,9 @@
 
 use super::server::WebServer;
 use crate::cmd::management::ManagementServer;
-use axum::Router;
 use botwaf_server::config::config::AppConfig;
-use botwaf_server::context::state::BotwafState;
-use botwaf_server::mgmt::health;
 use botwaf_server::{
-    config::{
-        config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
-        constant::URI_HEALTHZ,
-    },
+    config::config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
     mgmt::apm,
 };
 use botwaf_utils::panics::PanicHelper;
@@ -62,7 +56,7 @@ impl StandaloneServer {
         let signal_handle = ManagementServer::start(&config, true, signal_s).await;
 
         signal_r.await.expect("Failed to start Management server.");
-        tracing::info!("Management server is ready");
+        tracing::info!("Management server is ready on {}", config.mgmt.get_bind_addr());
 
         Self::start(&config, true).await;
 

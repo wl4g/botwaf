@@ -541,6 +541,12 @@ impl Default for ServerProperties {
 
 // Management Properties impls.
 
+impl MgmtProperties {
+    pub fn get_bind_addr(&self) -> String {
+        self.host.to_owned() + ":" + &self.port.to_string()
+    }
+}
+
 impl Default for MgmtProperties {
     fn default() -> Self {
         MgmtProperties {

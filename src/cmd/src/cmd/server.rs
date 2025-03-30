@@ -77,7 +77,7 @@ impl WebServer {
         let app_state = BotwafState::new(&config).await;
 
         // 1. Merge the biz modules routes.
-        tracing::info!("Register Web server app routers ...");
+        tracing::debug!("Register Web server app routers ...");
         let mut expose_router = Router::new().merge(auth_router()).merge(user_router());
 
         // 1.1 Merge the addition router.
@@ -89,10 +89,17 @@ impl WebServer {
 
         // 2. Merge of all routes.
         let mut app_router = match &config.server.context_path {
-            Some(cp) => {
+            // If the context path is "/" then should not be use nest on axum-0.8+
+            Some(ctx_path) if ctx_path == "/" => Router::new()
+                .merge(health_router())
+                .merge(expose_router)
+                .with_state(app_state.clone()),
+            // If the context path is not "/" then should be use nest on axum-0.8+
+            Some(ctx_path) => {
+                let prefixed_router = Router::new().nest(&ctx_path, expose_router);
                 Router::new()
                     .merge(health_router())
-                    .nest(&cp, expose_router) // support the context-path.
+                    .merge(prefixed_router) // support the context-path.
                     .with_state(app_state.clone()) // TODO: remove clone
             }
             None => {
@@ -105,7 +112,7 @@ impl WebServer {
 
         // 3. Merge the swagger router.
         if config.swagger.enabled {
-            tracing::info!("Register Web server swagger middlewares ...");
+            tracing::debug!("Register Web server swagger middlewares ...");
             app_router = app_router.merge(swagger::init(&config));
         }
 
@@ -114,7 +121,7 @@ impl WebServer {
         // The later the higher the priority? For example, if auth_middleware is set at the end, it will
         // enter when requesting '/', otherwise it will not enter if it is set at the front, and will
         // directly enter handle_root().
-        tracing::info!("Register Web server auth middlewares ...");
+        tracing::debug!("Register Web server auth middlewares ...");
         app_router = app_router.layer(
             ServiceBuilder::new()
                 .layer(axum::middleware::from_fn_with_state(app_state, auth_middleware))

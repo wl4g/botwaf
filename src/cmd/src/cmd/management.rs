@@ -36,7 +36,7 @@ impl ManagementServer {
             .route("/metrics", get(mgmt::apm::metrics::handle_metrics))
             .layer(prometheus_layer);
 
-        let bind_addr = config.mgmt.host.clone() + ":" + &config.mgmt.port.to_string();
+        let bind_addr = config.mgmt.get_bind_addr();
         tracing::info!("Starting Management server on {}", bind_addr);
 
         tokio::spawn(async move {

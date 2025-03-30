@@ -61,7 +61,7 @@ impl VerifierServer {
         let signal_handle = ManagementServer::start(&config, true, signal_s).await;
 
         signal_r.await.expect("Failed to start Management server.");
-        tracing::info!("Management server is ready");
+        tracing::info!("Management server is ready on {}", config.mgmt.get_bind_addr());
 
         Self::start(&config, true).await;
 

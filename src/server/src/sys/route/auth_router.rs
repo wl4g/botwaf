@@ -68,7 +68,7 @@ pub const AUTH_CALLBACK_OIDC_URI: &str = "/auth/callback/oidc";
 pub const AUTH_CALLBACK_GITHUB_URI: &str = "/auth/callback/github";
 pub const AUTH_WALLET_ETHERS_VERIFY_URI: &str = "/auth/wallet/ethers/verify";
 pub const AUTH_LOGOUT_URI: &str = "/auth/logout";
-pub const STATIC_RESOURCES_URI: &str = "/static/*file";
+pub const STATIC_RESOURCES_URI: &str = "/static/{*file}";
 
 pub const EXCLUDED_PATHS: [&str; 8] = [
     AUTH_PASSWORD_PUBKEY_URI,
@@ -95,6 +95,7 @@ pub fn init() -> Router<BotwafState> {
         .route(AUTH_WALLET_ETHERS_VERIFY_URI, post(handle_wallet_ethers_verify))
         .route(AUTH_LOGOUT_URI, get(handle_logout))
         .route(STATIC_RESOURCES_URI, get(handle_static))
+        //.without_v07_checks()
         .fallback(handle_page_404) // Global auto internal forwarding when not found.
         .layer(CookieManagerLayer::new())
 }
