@@ -104,25 +104,11 @@ pub fn init() -> Router<BotwafState> {
 // ----- Global Authentication interceptors. -----
 
 pub async fn auth_middleware(State(state): State<BotwafState>, req: Request<Body>, next: Next) -> impl IntoResponse {
-    let path = auths::clean_context_path(&state.config.server.context_path, req.uri().path());
+    let uri = req.uri();
+    let path = auths::clean_context_path(&state.config.server.context_path, uri.path());
 
-    // 1. Exclude paths that don't require authentication.
-    // 1.1 Paths that must be excluded according to the authentication mechanism's requirements.
-    // The root path is also excluded by default.
-    // each match with start.
-    if EXCLUDED_PATHS.iter().any(|p| path.starts_with(p)) {
-        return next.run(req).await;
-    }
-
-    // 1.2 According to the configuration of anonymous authentication path.
-    if state
-        .config
-        .auth_anonymous_glob_matcher
-        .as_ref()
-        .map(|glob| glob.is_match(path))
-        .unwrap_or(true)
-    {
-        // If it is an anonymous path, pass it directly.
+    // 1. Exclude if there is any path excluded.
+    if auths::is_passed_request(&state.config, uri) {
         return next.run(req).await;
     }
 

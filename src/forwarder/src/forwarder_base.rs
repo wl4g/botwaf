@@ -30,7 +30,7 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use botwaf_server::{config::config, context::state::BotwafState, sys::route::auth_router::EXCLUDED_PATHS};
+use botwaf_server::{config::config, context::state::BotwafState, util::auths};
 use botwaf_types::forwarder::HttpIncomingRequest;
 use hyper::StatusCode;
 use lazy_static::lazy_static;
@@ -118,9 +118,9 @@ impl BotwafForwarderManager {
 
     pub async fn botwaf_middleware(State(state): State<BotwafState>, req: Request<Body>, next: Next) -> Response {
         let uri = req.uri();
-        // Skip the excluded paths.
-        if EXCLUDED_PATHS.contains(&uri.path()) {
-            tracing::debug!("Passing excluded path: {}", &uri.path());
+
+        // 1. Exclude if there is any path excluded.
+        if auths::is_passed_request(&state.config, uri) {
             return next.run(req).await;
         }
 

@@ -18,12 +18,16 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use crate::{config::config::AppConfig, sys::handler::auth_handler::PrincipalType};
+use crate::{
+    config::config::AppConfig,
+    sys::{handler::auth_handler::PrincipalType, route::auth_router::EXCLUDED_PATHS},
+};
 use axum::body::Body;
 use botwaf_types::auth::{LoggedResponse, TokenWrapper};
 use botwaf_utils::{base64s::Base64Helper, webs};
 use chrono::{Duration, Utc};
-use hyper::{HeaderMap, Response, StatusCode};
+use globset::GlobSet;
+use hyper::{HeaderMap, Response, StatusCode, Uri};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
@@ -160,6 +164,28 @@ pub fn join_context_path(config: &AppConfig, path: String) -> String {
         Some(cp) => format!("{}{}", cp, path),
         None => path,
     }
+}
+
+pub fn is_passed_request(config: &Arc<AppConfig>, uri: &Uri) -> bool {
+    let path = clean_context_path(&config.server.context_path, uri.path());
+    // 1. Exclude paths that don't require authentication.
+    // 1.1 Paths that must be excluded according to the authentication mechanism's requirements.
+    // The root path is also excluded by default.
+    // each match with start.
+    if EXCLUDED_PATHS.iter().any(|p| path.starts_with(p)) {
+        return true;
+    }
+    // 1.2 According to the configuration of anonymous authentication path.
+    if config
+        .auth_anonymous_glob_matcher
+        .as_ref()
+        .map(|glob| glob.is_match(path))
+        .unwrap_or(false)
+    {
+        // If it is an anonymous path, pass it directly.
+        return true;
+    }
+    false
 }
 
 #[derive(Clone, Debug)]
