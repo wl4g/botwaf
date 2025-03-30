@@ -19,8 +19,8 @@
 // This includes modifications and derived works.
 
 use super::ipfilter::IPFilter;
-use crate::cache::{redis::StringRedisCache, ICache};
 use anyhow::{Error, Ok, Result};
+use botwaf_server::cache::{redis::StringRedisCache, ICache};
 use botwaf_types::forwarder::HttpIncomingRequest;
 use std::{net::IpAddr, str::FromStr, sync::Arc};
 

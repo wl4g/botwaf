@@ -18,36 +18,23 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use crate::config::config::AppConfig;
-use crate::waf::{
+use crate::handler::{
     forwarder::ForwarderManager, forwarder_http::HttpForwardHandler, ipfilter::IPFilterManager,
     ipfilter_redis::RedisIPFilter,
 };
-use crate::{
-    config::{
-        config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
-        constant::{EXCLUDED_PATHS, URI_HEALTHZ},
-    },
-    context::state::BotwafState,
-};
-use anyhow::{Error, Ok};
 use axum::{
     body::Body,
     extract::State,
     http::{Request, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
-    Router,
 };
+use botwaf_server::config::config;
+use botwaf_server::{config::constant::EXCLUDED_PATHS, context::state::BotwafState};
 use botwaf_types::forwarder::HttpIncomingRequest;
-use botwaf_utils::tokio_signal::tokio_graceful_shutdown_signal;
 use regex::Regex;
-use std::env;
-use std::sync::Arc;
-use tokio::net::TcpListener;
-use tower::ServiceBuilder;
 
-async fn botwaf_middleware(State(state): State<BotwafState>, req: Request<Body>, next: Next) -> impl IntoResponse {
+pub async fn botwaf_middleware(State(state): State<BotwafState>, req: Request<Body>, next: Next) -> Response {
     let uri = req.uri();
     // Skip the excluded paths.
     if EXCLUDED_PATHS.contains(&uri.path()) {
@@ -153,71 +140,4 @@ async fn botwaf_middleware(State(state): State<BotwafState>, req: Request<Body>,
             (StatusCode::INTERNAL_SERVER_ERROR, format!("Gateway Forwarded Error")).into_response()
         }
     }
-}
-
-pub async fn start(config: &Arc<AppConfig>) -> Result<(), Error> {
-    // http://www.network-science.de/ascii/#larry3d,graffiti,basic,drpepper,rounded,roman
-    let ascii_name = r#"
-____                                     
-/\  _`\                                   
-\ \,\L\_\     __   _ __   __  __     __   
- \/_\__ \   /'__`\/\`'__\/\ \/\ \  /'__`\ 
-   /\ \L\ \/\  __/\ \ \/ \ \ \_/ |/\  __/ 
-   \ `\____\ \____\\ \_\  \ \___/ \ \____\
-    \/_____/\/____/ \/_/   \/__/   \/____/  (Botwaf)
-"#;
-    eprintln!("");
-    eprintln!("{}", ascii_name);
-    eprintln!("                Program Version: {}", GIT_VERSION);
-    eprintln!(
-        "                Package Version: {}",
-        env!("CARGO_PKG_VERSION").to_string()
-    );
-    eprintln!("                Git Commit Hash: {}", GIT_COMMIT_HASH);
-    eprintln!("                 Git Build Date: {}", GIT_BUILD_DATE);
-    let load_config = env::var("BOTWAF_CFG_PATH").unwrap_or("Default".to_string());
-    eprintln!("             Load Configuration: {}", load_config);
-
-    let botwaf_state = BotwafState::new(&config).await;
-    let app_router = build_app_router(botwaf_state).await?;
-
-    let bind_addr = config::get_config().server.host.clone() + ":" + &config::get_config().server.port.to_string();
-    tracing::info!("Starting Botwaf web server on {}", bind_addr);
-
-    let listener = match TcpListener::bind(&bind_addr).await {
-        std::result::Result::Ok(l) => {
-            tracing::info!("Botwaf Web server is ready on {}", bind_addr);
-            l
-        }
-        Err(e) => {
-            tracing::error!("Failed to bind to {}: {}", bind_addr, e);
-            panic!("Failed to bind to {}: {}", bind_addr, e);
-        }
-    };
-
-    match axum::serve(listener, app_router.into_make_service())
-        .with_graceful_shutdown(tokio_graceful_shutdown_signal())
-        .await
-    {
-        std::result::Result::Ok(_) => {
-            tracing::info!("Botwaf Web server shut down gracefully");
-        }
-        Err(e) => {
-            tracing::error!("Error running web server: {}", e);
-            panic!("Error starting API server: {}", e);
-        }
-    }
-
-    Ok(())
-}
-
-pub async fn build_app_router(state: BotwafState) -> Result<Router, Error> {
-    let app_router = Router::new()
-        .route(
-            URI_HEALTHZ,
-            axum::routing::get(|| async { "Botwaf Web Server is Running!" }),
-        )
-        .layer(ServiceBuilder::new().layer(axum::middleware::from_fn_with_state(state, botwaf_middleware)));
-
-    Ok(app_router)
 }

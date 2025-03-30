@@ -19,11 +19,16 @@
 // This includes modifications and derived works.
 
 use crate::cmd::management::ManagementServer;
-use axum::Router;
+use axum::{
+    body::Body,
+    extract::{Request, State},
+    middleware::Next,
+    response::Response,
+    Router,
+};
 use botwaf_server::{
     config::{
-        config,
-        config::{AppConfig, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
+        config::{self, AppConfig, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
         swagger,
     },
     context::state::BotwafState,
@@ -35,12 +40,15 @@ use botwaf_server::{
 };
 use botwaf_utils::{panics::PanicHelper, tokio_signal::tokio_graceful_shutdown_signal};
 use clap::Command;
-use std::{env, sync::Arc};
+use std::{env, future::Future, pin::Pin, sync::Arc};
 use tokio::{net::TcpListener, sync::oneshot};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
 pub struct WebServer {}
+
+pub type MiddlewareFunction =
+    fn(State<BotwafState>, Request<Body>, Next) -> Pin<Box<dyn Future<Output = Response<Body>> + Send + 'static>>;
 
 impl WebServer {
     pub const COMMAND_NAME: &'static str = "server";
@@ -67,24 +75,34 @@ impl WebServer {
         signal_r.await.expect("Failed to start Management server.");
         tracing::info!("Management server is started");
 
-        Self::start(&config, true, None).await;
+        // let dummy_addition_middleware = None::<
+        //     fn(State<BotwafState>, Request<Body>, Next) -> Pin<Box<dyn Future<Output = IntoResponse> + Send + 'static>>,
+        // >;
+        Self::start(&config, true, None, None).await;
 
         signal_handle.await.unwrap();
     }
 
     #[allow(unused)]
-    pub async fn start(config: &Arc<AppConfig>, verbose: bool, addition_router: Option<Router<BotwafState>>) {
+    pub async fn start(
+        config: &Arc<AppConfig>,
+        verbose: bool,
+        addition_router: Option<Router<BotwafState>>,
+        addition_middleware: Option<MiddlewareFunction>,
+    ) {
         let app_state = BotwafState::new(&config).await;
+
+        // let a = auth_middleware;
 
         // 1. Merge the biz modules routes.
         tracing::debug!("Register Web server app routers ...");
-        let mut expose_router = Router::new().merge(auth_router()).merge(user_router());
+        let mut register_router = Router::new().merge(auth_router()).merge(user_router());
 
         // 1.1 Merge the addition router.
-        expose_router = if let Some(addition_router) = addition_router {
-            expose_router.merge(addition_router)
+        register_router = if let Some(addition_router) = addition_router {
+            register_router.merge(addition_router)
         } else {
-            expose_router
+            register_router
         };
 
         // 2. Merge of all routes.
@@ -92,11 +110,11 @@ impl WebServer {
             // If the context path is "/" then should not be use nest on axum-0.8+
             Some(ctx_path) if ctx_path == "/" => Router::new()
                 .merge(health_router())
-                .merge(expose_router)
+                .merge(register_router)
                 .with_state(app_state.clone()),
             // If the context path is not "/" then should be use nest on axum-0.8+
             Some(ctx_path) => {
-                let prefixed_router = Router::new().nest(&ctx_path, expose_router);
+                let prefixed_router = Router::new().nest(&ctx_path, register_router);
                 Router::new()
                     .merge(health_router())
                     .merge(prefixed_router) // support the context-path.
@@ -105,7 +123,7 @@ impl WebServer {
             None => {
                 Router::new()
                     .merge(health_router())
-                    .merge(expose_router)
+                    .merge(register_router)
                     .with_state(app_state.clone()) // TODO: remove clone
             }
         };
@@ -124,7 +142,10 @@ impl WebServer {
         tracing::debug!("Register Web server auth middlewares ...");
         app_router = app_router.layer(
             ServiceBuilder::new()
-                .layer(axum::middleware::from_fn_with_state(app_state, auth_middleware))
+                .layer(axum::middleware::from_fn_with_state(
+                    app_state.to_owned(),
+                    auth_middleware,
+                ))
                 // Optional: add logs to tracing.
                 .layer(
                     TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
@@ -136,6 +157,10 @@ impl WebServer {
                     }),
                 ),
         );
+        if addition_middleware.is_some() {
+            let layer = axum::middleware::from_fn_with_state(app_state.to_owned(), addition_middleware.unwrap());
+            app_router = app_router.layer(layer);
+        }
         //.route_layer(axum::Extension(app_state));
 
         let bind_addr = config.server.host.clone() + ":" + &config.server.port.to_string();

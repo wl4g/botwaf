@@ -10,6 +10,7 @@ members = [
     "src/server",
     "src/updater",
     "src/verifier",
+    "src/forwarder",
     "src/types",
     "src/utils",
 ]
@@ -43,6 +44,7 @@ botwaf-cmd = { path = "src/cmd" }
 botwaf-server = { path = "src/server" }
 botwaf-updater = { path = "src/updater" }
 botwaf-verifier = { path = "src/verifier" }
+botwaf-forwarder = { path = "src/forwarder" }
 botwaf-types = { path = "src/types" }
 botwaf-utils = { path = "src/utils" }
 

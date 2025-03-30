@@ -12,6 +12,7 @@ workspace = true
 botwaf-server.workspace = true
 botwaf-updater.workspace = true
 botwaf-verifier.workspace = true
+botwaf-forwarder.workspace = true
 botwaf-types.workspace = true
 botwaf-utils.workspace = true
 

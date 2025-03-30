@@ -608,6 +608,7 @@ dependencies = [
  "anyhow",
  "axum 0.8.3",
  "axum-prometheus",
+ "botwaf-forwarder",
  "botwaf-server",
  "botwaf-types",
  "botwaf-updater",
@@ -625,6 +626,43 @@ dependencies = [
  "tower-cookies",
  "tower-http 0.5.2",
  "tracing",
+]
+
+[[package]]
+name = "botwaf-forwarder"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum 0.8.3",
+ "botwaf-server",
+ "botwaf-types",
+ "botwaf-utils",
+ "chrono",
+ "clap",
+ "config",
+ "dotenv",
+ "hyper 1.6.0",
+ "langchain-rust",
+ "lazy_static",
+ "modsecurity",
+ "moka",
+ "openai",
+ "pgvector",
+ "redis",
+ "regex",
+ "reqwest 0.12.15",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-cron-scheduler",
+ "tower 0.5.2",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "validator",
 ]
 
 [[package]]

@@ -18,7 +18,7 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use crate::waf::forwarder_http::HttpForwardHandler;
+use crate::handler::forwarder_http::HttpForwardHandler;
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use axum::{body::Body, response::Response};

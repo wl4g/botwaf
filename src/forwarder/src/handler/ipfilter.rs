@@ -18,8 +18,9 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use crate::{cache::redis::StringRedisCache, config::config, waf::ipfilter_redis::RedisIPFilter};
+use crate::handler::ipfilter_redis::RedisIPFilter;
 use anyhow::{Error, Result};
+use botwaf_server::{cache::redis::StringRedisCache, config::config};
 use botwaf_types::forwarder::HttpIncomingRequest;
 use lazy_static::lazy_static;
 use std::{

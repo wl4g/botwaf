@@ -20,7 +20,13 @@
 
 use super::server::WebServer;
 use crate::cmd::management::ManagementServer;
+use axum::body::Body;
+use axum::extract::{Request, State};
+use axum::http::Response;
+use axum::middleware::Next;
+use botwaf_forwarder::route::proxy::botwaf_middleware;
 use botwaf_server::config::config::AppConfig;
+use botwaf_server::context::state::BotwafState;
 use botwaf_server::{
     config::config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
     mgmt::apm,
@@ -28,6 +34,8 @@ use botwaf_server::{
 use botwaf_utils::panics::PanicHelper;
 use clap::Command;
 use std::env;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 
@@ -65,7 +73,15 @@ impl StandaloneServer {
 
     #[allow(unused)]
     async fn start(config: &Arc<AppConfig>, verbose: bool) {
-        WebServer::start(config, verbose, None).await;
+        WebServer::start(config, verbose, None, Some(Self::wrapped_botwaf_middleware)).await;
+    }
+
+    fn wrapped_botwaf_middleware(
+        state: State<BotwafState>,
+        request: Request<Body>,
+        next: Next,
+    ) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
+        Box::pin(botwaf_middleware(state, request, next))
     }
 
     fn print_banner(config: Arc<AppConfig>, verbose: bool) {
