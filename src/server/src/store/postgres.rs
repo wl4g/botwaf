@@ -73,7 +73,7 @@ impl<T: Any + Send + Sync> PostgresRepository<T> {
     }
 
     async fn init_migration(pool: PgPool) -> PgPool {
-        let results = sqlx::migrate!("../../migrations").run(&pool).await;
+        let results = sqlx::migrate!("../../deployment/migrations").run(&pool).await;
         tracing::info!("Migration result: {:?}", results);
         match results {
             Ok(_) => tracing::info!("Migration success"),
