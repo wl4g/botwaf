@@ -18,5 +18,5 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-pub mod llm_handler;
-pub mod llm_handler_langchain;
+pub mod llm_base;
+pub mod llm_langchain;

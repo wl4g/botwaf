@@ -22,6 +22,7 @@ use crate::cmd::management::ManagementServer;
 use axum::Router;
 use botwaf_server::config::config::AppConfig;
 use botwaf_server::context::state::BotwafState;
+use botwaf_server::llm::handler::llm_base::LLMManager;
 use botwaf_server::mgmt::health::init as health_router;
 use botwaf_server::{
     config::config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
@@ -36,9 +37,9 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
-pub struct VerifierServer {}
+pub struct BotwafVerifierServer {}
 
-impl VerifierServer {
+impl BotwafVerifierServer {
     pub const COMMAND_NAME: &'static str = "verifier";
 
     pub fn build() -> Command {
@@ -70,11 +71,12 @@ impl VerifierServer {
 
     #[allow(unused)]
     async fn start(config: &Arc<AppConfig>, verbose: bool) {
+        LLMManager::init().await;
         BotwafVerifierManager::init().await;
 
         let app_state = BotwafState::new(&config).await;
 
-        let bind_addr = config.server.host.clone() + ":" + &config.server.port.to_string();
+        let bind_addr = config.server.get_bind_addr();
         tracing::info!("Starting Botwaf Verifier server on {}", bind_addr);
         let listener = match TcpListener::bind(&bind_addr).await {
             Ok(l) => {

@@ -18,10 +18,9 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use crate::handler::forwarder_http::HttpForwardHandler;
+use crate::ipfilter::ipfilter_redis::RedisIPFilter;
 use anyhow::{Error, Result};
-use async_trait::async_trait;
-use axum::{body::Body, response::Response};
+use botwaf_server::{cache::redis::StringRedisCache, config::config};
 use botwaf_types::forwarder::HttpIncomingRequest;
 use lazy_static::lazy_static;
 use std::{
@@ -29,10 +28,19 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-#[async_trait]
-pub trait IForwarder {
-    async fn init(&self) -> Result<()>;
-    async fn http_forward(&self, incoming: Arc<HttpIncomingRequest>) -> Result<Response<Body>>;
+#[async_trait::async_trait]
+pub trait IPFilter {
+    /// Initialization.
+    async fn init(&self) -> Result<(), Error>;
+
+    /// Checks if an IP address is in the blacklist
+    async fn is_blocked(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error>;
+
+    /// Adds an IP address to the blacklist
+    async fn block_ip(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error>;
+
+    /// Removes an IP address from the blacklist
+    async fn unblock_ip(&self, incoming: Arc<HttpIncomingRequest>) -> Result<bool, Error>;
 }
 
 lazy_static! {
@@ -46,60 +54,65 @@ lazy_static! {
     /// Mutual exclusion rules for read-write locks:
     /// When a thread holds a write lock, other threads cannot obtain read or write locks. ---Therefore, the phantom read problem of the database is avoided
     /// When one or more threads hold a read lock, other threads cannot obtain a write lock. ---Therefore, RwLock is only suitable for scenarios with more reads and less writes, such as cache systems, configuration file reading, etc.
-    static ref SINGLE_INSTANCE: RwLock<ForwarderManager> = RwLock::new(ForwarderManager::new());
+    static ref SINGLE_INSTANCE: RwLock<IPFilterManager> = RwLock::new(IPFilterManager::new());
 }
 
-pub struct ForwarderManager {
-    pub implementations: HashMap<String, Arc<dyn IForwarder + Send + Sync>>,
+pub struct IPFilterManager {
+    pub implementations: HashMap<String, Arc<dyn IPFilter + Send + Sync>>,
 }
 
-impl ForwarderManager {
+impl IPFilterManager {
     fn new() -> Self {
-        ForwarderManager {
+        IPFilterManager {
             implementations: HashMap::new(),
         }
     }
 
-    pub fn get() -> &'static RwLock<ForwarderManager> {
+    pub fn get() -> &'static RwLock<IPFilterManager> {
         &SINGLE_INSTANCE
     }
 
     pub async fn init() {
-        tracing::info!("Register Botwaf Http IForwarder ...");
+        tracing::info!("Register Botwaf Redis IPFilter ...");
+        let redis_cache = Arc::new(StringRedisCache::new(&config::get_config().cache.redis));
+        let handler = RedisIPFilter::new(
+            redis_cache,
+            config::get_config().services.blocked_header_name.to_owned(),
+        );
         match Self::get()
             .write() // If acquire fails, then it block until acquired.
             .unwrap() // If acquire fails, then it should panic.
-            .register(HttpForwardHandler::NAME.to_owned(), HttpForwardHandler::new())
+            .register(RedisIPFilter::NAME.to_owned(), handler)
         {
             Ok(registered) => {
-                tracing::info!("Initializing Botwaf Http IForwarder ...");
+                tracing::info!("Initializing Botwaf Redis IPFilter ...");
                 let _ = registered.init().await;
             }
-            Err(e) => panic!("Failed to register Http IForwarder: {}", e),
+            Err(e) => panic!("Failed to register Redis IPFilter: {}", e),
         }
     }
 
-    fn register<T: IForwarder + Send + Sync + 'static>(
+    fn register<T: IPFilter + Send + Sync + 'static>(
         &mut self,
         name: String,
         handler: Arc<T>,
     ) -> Result<Arc<T>, Error> {
         // Check if the name already exists
         if self.implementations.contains_key(&name) {
-            let errmsg = format!("Forwarder handler Factory: Name '{}' already exists", name);
+            let errmsg = format!("Updater handler Factory: Name '{}' already exists", name);
             return Err(Error::msg(errmsg));
         }
         self.implementations.insert(name, handler.to_owned());
         Ok(handler)
     }
 
-    pub fn get_implementation(name: String) -> Result<Arc<dyn IForwarder + Send + Sync>, Error> {
+    pub fn get_implementation(name: String) -> Result<Arc<dyn IPFilter + Send + Sync>, Error> {
         // If the read lock is poisoned, the program will panic.
-        let this = ForwarderManager::get().read().unwrap();
+        let this = IPFilterManager::get().read().unwrap();
         if let Some(implementation) = this.implementations.get(&name) {
             Ok(implementation.to_owned())
         } else {
-            let errmsg = format!("Could not obtain registered Forwarder '{}'.", name);
+            let errmsg = format!("Could not obtain registered IPFilter '{}'.", name);
             return Err(Error::msg(errmsg));
         }
     }

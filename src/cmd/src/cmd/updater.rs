@@ -23,6 +23,7 @@ use axum::Router;
 use botwaf_server::config::config::AppConfig;
 use botwaf_server::config::config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION};
 use botwaf_server::context::state::BotwafState;
+use botwaf_server::llm::handler::llm_base::LLMManager;
 use botwaf_server::mgmt::{apm, health::init as health_router};
 use botwaf_updater::updater_base::BotwafUpdaterManager;
 use botwaf_utils::panics::PanicHelper;
@@ -33,9 +34,9 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
-pub struct UpdaterServer {}
+pub struct BotwafUpdaterServer {}
 
-impl UpdaterServer {
+impl BotwafUpdaterServer {
     pub const COMMAND_NAME: &'static str = "updater";
 
     pub fn build() -> Command {
@@ -67,11 +68,12 @@ impl UpdaterServer {
 
     #[allow(unused)]
     async fn start(config: &Arc<AppConfig>, verbose: bool) {
+        LLMManager::init().await;
         BotwafUpdaterManager::init().await;
 
         let app_state = BotwafState::new(&config).await;
 
-        let bind_addr = config.server.host.clone() + ":" + &config.server.port.to_string();
+        let bind_addr = config.server.get_bind_addr();
         tracing::info!("Starting Botwaf Updater server on {}", bind_addr);
         let listener = match TcpListener::bind(&bind_addr).await {
             Ok(l) => {

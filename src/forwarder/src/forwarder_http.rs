@@ -18,7 +18,7 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use super::forwarder::IForwarder;
+use crate::forwarder_base::IForwarder;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use axum::{body::Body, response::Response};

@@ -21,7 +21,7 @@
 use crate::{
     cache::{memory::StringMemoryCache, redis::StringRedisCache, CacheContainer},
     config::config::{self, AppConfig, AppDBType},
-    llm::handler::{llm_handler::ILLMHandler, llm_handler_langchain::LangchainLLMHandler},
+    llm::handler::llm_base::{ILLMHandler, LLMManager},
     mgmt::health::{MongoChecker, RedisClusterChecker, SQLiteChecker},
     store::{
         users_mongo::UserMongoRepository, users_postgresql::UserPostgresRepository, users_sqlite::UserSQLiteRepository,
@@ -130,7 +130,7 @@ impl BotwafState {
             // The Application repositories.
             modsec_engine,
             modsec_rules,
-            llm_handler: Arc::new(LangchainLLMHandler::new().await),
+            llm_handler: LLMManager::get_default_implementation(),
         };
 
         // Build DI container.

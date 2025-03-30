@@ -32,6 +32,7 @@ use botwaf_server::{
         swagger,
     },
     context::state::BotwafState,
+    llm::handler::llm_base::LLMManager,
     mgmt::{apm, health::init as health_router},
     sys::route::{
         auth_router::{auth_middleware, init as auth_router},
@@ -90,6 +91,8 @@ impl WebServer {
         addition_router: Option<Router<BotwafState>>,
         addition_middleware: Option<MiddlewareFunction>,
     ) {
+        LLMManager::init().await;
+
         let app_state = BotwafState::new(&config).await;
 
         // let a = auth_middleware;
@@ -163,7 +166,7 @@ impl WebServer {
         }
         //.route_layer(axum::Extension(app_state));
 
-        let bind_addr = config.server.host.clone() + ":" + &config.server.port.to_string();
+        let bind_addr = config.server.get_bind_addr();
         tracing::info!("Starting web server on {}", bind_addr);
         let listener = match TcpListener::bind(&bind_addr).await {
             Ok(l) => {

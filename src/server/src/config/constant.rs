@@ -17,8 +17,3 @@
 // IMPORTANT: Any software that fully or partially contains or uses materials
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
-
-// Default router URIs paths to excluding.
-pub const URI_STATIC: &str = "/static/*file";
-pub const URI_HEALTHZ: &str = "/healthz";
-pub const EXCLUDED_PATHS: [&str; 2] = [URI_STATIC, URI_HEALTHZ];

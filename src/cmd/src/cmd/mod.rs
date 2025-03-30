@@ -18,6 +18,7 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+pub mod forwarder;
 pub mod management;
 pub mod server;
 pub mod standalone;
@@ -26,11 +27,12 @@ pub mod verifier;
 
 use botwaf_server::config::config;
 use clap::{Arg, ArgMatches, Command};
+use forwarder::BotwafForwarderServer;
 use server::WebServer;
 use standalone::StandaloneServer;
 use std::{collections::BTreeMap, sync::OnceLock};
-use updater::UpdaterServer;
-use verifier::VerifierServer;
+use updater::BotwafUpdaterServer;
+use verifier::BotwafVerifierServer;
 
 /// TODO: Used jemalloc or tcmalloc as the default allocator for APM observe monitoring.
 /// Check for the allocator used: 'objdump -t target/debug/botwaf | grep mi_os_alloc'
@@ -64,19 +66,27 @@ pub fn register_subcommand_handles() -> &'static BTreeMap<&'static str, (Subcomm
             ),
         );
         map.insert(
-            UpdaterServer::COMMAND_NAME,
+            BotwafUpdaterServer::COMMAND_NAME,
             (
                 // Type inference error, forced conversion need.
-                UpdaterServer::build as SubcommandBuildFn,
-                UpdaterServer::run as SubcommandHandleFn,
+                BotwafUpdaterServer::build as SubcommandBuildFn,
+                BotwafUpdaterServer::run as SubcommandHandleFn,
             ),
         );
         map.insert(
-            VerifierServer::COMMAND_NAME,
+            BotwafVerifierServer::COMMAND_NAME,
             (
                 // Type inference error, forced conversion need.
-                VerifierServer::build as SubcommandBuildFn,
-                VerifierServer::run as SubcommandHandleFn,
+                BotwafVerifierServer::build as SubcommandBuildFn,
+                BotwafVerifierServer::run as SubcommandHandleFn,
+            ),
+        );
+        map.insert(
+            BotwafForwarderServer::COMMAND_NAME,
+            (
+                // Type inference error, forced conversion need.
+                BotwafForwarderServer::build as SubcommandBuildFn,
+                BotwafForwarderServer::run as SubcommandHandleFn,
             ),
         );
         map

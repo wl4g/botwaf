@@ -18,8 +18,8 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use super::llm_handler::ILLMHandler;
-use crate::config::config;
+use super::llm_base::ILLMHandler;
+use crate::config::config::{self, LlmProperties};
 use botwaf_types::knowledge::{KnowledgeCategory, KnowledgeStatus, KnowledgeUploadInfo};
 use std::{
     collections::HashMap,
@@ -51,7 +51,10 @@ pub struct LangchainLLMHandler {
 }
 
 impl LangchainLLMHandler {
-    pub async fn new() -> Self {
+    pub const NAME: &'static str = "LANGCHAIN";
+
+    #[allow(unused)]
+    pub async fn new(config: &LlmProperties) -> Arc<Self> {
         // Create the embedding openai config.
         let llm_config = &config::get_config().services.llm;
         let mut embedding_openai_config =
@@ -117,15 +120,17 @@ impl LangchainLLMHandler {
             .with_options(call_opts);
 
         // Create the this updater handler instance.
-        Self {
+        Arc::new(Self {
             pgvec_store: Arc::new(Box::new(pgvec_store)),
             openai_llm,
-        }
+        })
     }
 }
 
 #[async_trait::async_trait]
 impl ILLMHandler for LangchainLLMHandler {
+    async fn init(&self) {}
+
     async fn embedding(&self, mut info: KnowledgeUploadInfo, file: File) -> Result<KnowledgeUploadInfo, anyhow::Error> {
         info.status = KnowledgeStatus::RECEIVED;
 
@@ -199,7 +204,34 @@ impl ILLMHandler for LangchainLLMHandler {
         Ok(info)
     }
 
-    async fn generate(&self) -> Result<(), anyhow::Error> {
+    async fn generate(&self, prompt: String) -> Result<String, anyhow::Error> {
+        // Native OpenAI to completions.
+        // let messages = vec![ChatCompletionMessage {
+        //     role: ChatCompletionMessageRole::System,
+        //     content: Some("You are a helpful assistant.".to_string()),
+        //     name: None,
+        //     function_call: None,
+        //     tool_call_id: None,
+        //     tool_calls: None,
+        // }];
+        // let embedding_result = ChatCompletion::builder(&config::get_config().botwaf.llm.embedding.model, messages.clone())
+        //     .credentials(self.embedding_openai_config.as_ref().to_owned())
+        //     .create()
+        //     .await;
+        // match embedding_result {
+        //     Ok(ret) => {
+        //         let msg = ret.choices.first().unwrap().message.clone();
+        //         // Assistant: Sure! Here's a random crab fact: ...
+        //         tracing::info!("{:#?}: {}", msg.role, msg.content.unwrap().trim());
+        //         // send to LLM to analyze
+        //         // update the ModSecurity rule to state according LLM analysis result
+        //     }
+        //     Err(e) => {
+        //         tracing::error!("Failed to LLM embedding: {:?}", e);
+        //         return;
+        //     }
+        // }
+
         // TODO: retriever & generate.
         let prompt= message_formatter![
                     fmt_message!(Message::new_system_message("You are a helpful assistant")),

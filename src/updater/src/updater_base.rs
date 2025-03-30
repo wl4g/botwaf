@@ -18,15 +18,16 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::{collections::HashMap, sync::Arc};
-
 use crate::updater_simple_llm::SimpleLLMUpdater;
 use anyhow::Error;
 use async_trait::async_trait;
 use botwaf_server::config::config;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 #[async_trait]
 pub trait IBotwafUpdater: Send + Sync {
@@ -34,7 +35,7 @@ pub trait IBotwafUpdater: Send + Sync {
 }
 
 lazy_static! {
-    static ref SINGLE_INSTANCE: Mutex<BotwafUpdaterManager> = Mutex::new(BotwafUpdaterManager::new());
+    static ref SINGLE_INSTANCE: RwLock<BotwafUpdaterManager> = RwLock::new(BotwafUpdaterManager::new());
 }
 
 pub struct BotwafUpdaterManager {
@@ -48,7 +49,7 @@ impl BotwafUpdaterManager {
         }
     }
 
-    pub fn get() -> &'static Mutex<BotwafUpdaterManager> {
+    pub fn get() -> &'static RwLock<BotwafUpdaterManager> {
         &SINGLE_INSTANCE
     }
 
@@ -62,55 +63,41 @@ impl BotwafUpdaterManager {
             }
             // TODO: Full use similar java spi provider mechanism.
             if config.kind == SimpleLLMUpdater::KIND {
-                tracing::info!("Initializing implementation Botwaf updater: {}", config.name);
-                let handler = SimpleLLMUpdater::new(config).await;
-                if let Err(e) = BotwafUpdaterManager::get()
-                    .lock()
-                    .await
-                    .register(config.name.to_owned(), handler.clone())
+                match Self::get()
+                    .write() // If acquire fails, then it block until acquired.
+                    .unwrap() // If acquire fails, then it should panic.
+                    .register(config.kind.to_owned(), SimpleLLMUpdater::new(config).await)
                 {
-                    tracing::error!("Failed to register updater: {}", e);
+                    Ok(registered) => {
+                        tracing::info!("Initializing Botwaf Updater ...");
+                        let _ = registered.init().await;
+                    }
+                    Err(e) => panic!("Failed to register Botwaf Updater: {}", e),
                 }
-                tracing::info!("Registered implementation updater: {}", config.name);
-            }
-        }
-        tracing::info!("Initializing All Botwaf updaters ...");
-        for config in &config::get_config().services.updaters {
-            if !config.enabled {
-                tracing::info!("Skipping implementation updater: {}", config.name);
-                continue;
-            }
-            // TODO: Full use similar java spi provider mechanism.
-            match Self::get()
-                .lock()
-                .await
-                .get_implementation(config.name.to_owned())
-                .await
-            {
-                Ok(handler) => {
-                    tracing::info!("Initializing implementation Botwaf updater: {}", config.name);
-                    handler.init().await;
-                }
-                Err(_) => {}
             }
         }
     }
 
-    fn register(&mut self, name: String, handler: Arc<dyn IBotwafUpdater + Send + Sync>) -> Result<(), Error> {
-        // Check if the name already exists
+    fn register<T: IBotwafUpdater + Send + Sync + 'static>(
+        &mut self,
+        name: String,
+        handler: Arc<T>,
+    ) -> Result<Arc<T>, Error> {
         if self.implementations.contains_key(&name) {
-            let errmsg = format!("Updater Factory: Name '{}' already exists", name);
-            return Err(Error::msg(errmsg));
+            tracing::debug!("Already register the Updater '{}'", name);
+            return Ok(handler);
         }
-        self.implementations.insert(name, handler);
-        Ok(())
+        self.implementations.insert(name, handler.to_owned());
+        Ok(handler)
     }
 
-    pub async fn get_implementation(&self, name: String) -> Result<Arc<dyn IBotwafUpdater + Send + Sync>, Error> {
-        if let Some(implementation) = self.implementations.get(&name) {
-            Ok(implementation.clone())
+    pub async fn get_implementation(name: String) -> Result<Arc<dyn IBotwafUpdater + Send + Sync>, Error> {
+        // If the read lock is poisoned, the program will panic.
+        let this = BotwafUpdaterManager::get().read().unwrap();
+        if let Some(implementation) = this.implementations.get(&name) {
+            Ok(implementation.to_owned())
         } else {
-            let errmsg = format!("Handler Factory: Name '{}' does't exists", name);
+            let errmsg = format!("Could not obtain registered Updater '{}'.", name);
             return Err(Error::msg(errmsg));
         }
     }

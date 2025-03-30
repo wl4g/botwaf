@@ -543,13 +543,13 @@ impl Default for ServerProperties {
     }
 }
 
-// Management Properties impls.
-
-impl MgmtProperties {
+impl ServerProperties {
     pub fn get_bind_addr(&self) -> String {
         self.host.to_owned() + ":" + &self.port.to_string()
     }
 }
+
+// Management Properties impls.
 
 impl Default for MgmtProperties {
     fn default() -> Self {
@@ -561,6 +561,12 @@ impl Default for MgmtProperties {
             pyroscope: PyroscopeAgentProperties::default(),
             otel: OtelProperties::default(),
         }
+    }
+}
+
+impl MgmtProperties {
+    pub fn get_bind_addr(&self) -> String {
+        self.host.to_owned() + ":" + &self.port.to_string()
     }
 }
 

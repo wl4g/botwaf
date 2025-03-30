@@ -23,7 +23,10 @@ use anyhow::Error;
 use async_trait::async_trait;
 use botwaf_server::config::config;
 use lazy_static::lazy_static;
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 use tokio::sync::Mutex;
 
 #[async_trait]
@@ -32,7 +35,7 @@ pub trait IBotwafVerifier: Send + Sync {
 }
 
 lazy_static! {
-    static ref SINGLE_INSTANCE: Mutex<BotwafVerifierManager> = Mutex::new(BotwafVerifierManager::new());
+    static ref SINGLE_INSTANCE: RwLock<BotwafVerifierManager> = RwLock::new(BotwafVerifierManager::new());
 }
 
 pub struct BotwafVerifierManager {
@@ -46,68 +49,55 @@ impl BotwafVerifierManager {
         }
     }
 
-    pub fn get() -> &'static Mutex<BotwafVerifierManager> {
+    pub fn get() -> &'static RwLock<BotwafVerifierManager> {
         &SINGLE_INSTANCE
     }
 
     pub async fn init() {
-        tracing::info!("Register All Botwaf verifiers ...");
+        tracing::info!("Register All Botwaf updaters ...");
+
         for config in &config::get_config().services.verifiers {
             if !config.enabled {
-                tracing::info!("Skipping implementation verifier: {}", config.name);
+                tracing::info!("Skipping implementation updater: {}", config.name);
                 continue;
             }
             // TODO: Full use similar java spi provider mechanism.
             if config.kind == SimpleExecuteBasedVerifier::KIND {
-                tracing::info!("Initializing implementation Botwaf verifier: {}", config.name);
-                let handler = SimpleExecuteBasedVerifier::new(config).await;
-                if let Err(e) = BotwafVerifierManager::get()
-                    .lock()
-                    .await
-                    .register(config.name.to_owned(), handler.to_owned())
+                match Self::get()
+                    .write() // If acquire fails, then it block until acquired.
+                    .unwrap() // If acquire fails, then it should panic.
+                    .register(config.kind.to_owned(), SimpleExecuteBasedVerifier::new(config).await)
                 {
-                    tracing::error!("Failed to register Botwaf verifier: {}", e);
+                    Ok(registered) => {
+                        tracing::info!("Initializing Botwaf Verifier ...");
+                        let _ = registered.init().await;
+                    }
+                    Err(e) => panic!("Failed to register Botwaf Verifier: {}", e),
                 }
-                tracing::info!("Registered implementation Botwaf verifier: {}", config.name);
-            }
-        }
-        tracing::info!("Initializing All Botwaf verifiers ...");
-        for config in &config::get_config().services.verifiers {
-            if !config.enabled {
-                tracing::info!("Skipping implementation verifier: {}", config.name);
-                continue;
-            }
-            // TODO: Full use similar java spi provider mechanism.
-            match Self::get()
-                .lock()
-                .await
-                .get_implementation(config.name.to_owned())
-                .await
-            {
-                Ok(handler) => {
-                    tracing::info!("Initializing implementation Botwaf verifier: {}", config.name);
-                    handler.init().await;
-                }
-                Err(_) => {}
             }
         }
     }
 
-    fn register(&mut self, name: String, handler: Arc<dyn IBotwafVerifier + Send + Sync>) -> Result<(), Error> {
-        // Check if the name already exists
+    fn register<T: IBotwafVerifier + Send + Sync + 'static>(
+        &mut self,
+        name: String,
+        handler: Arc<T>,
+    ) -> Result<Arc<T>, Error> {
         if self.implementations.contains_key(&name) {
-            let errmsg = format!("Verifier Factory: Name '{}' already exists", name);
-            return Err(Error::msg(errmsg));
+            tracing::debug!("Already register the Verifier '{}'", name);
+            return Ok(handler);
         }
-        self.implementations.insert(name, handler);
-        Ok(())
+        self.implementations.insert(name, handler.to_owned());
+        Ok(handler)
     }
 
-    pub async fn get_implementation(&self, name: String) -> Result<Arc<dyn IBotwafVerifier + Send + Sync>, Error> {
-        if let Some(implementation) = self.implementations.get(&name) {
-            Ok(implementation.clone())
+    pub async fn get_implementation(name: String) -> Result<Arc<dyn IBotwafVerifier + Send + Sync>, Error> {
+        // If the read lock is poisoned, the program will panic.
+        let this = BotwafVerifierManager::get().read().unwrap();
+        if let Some(implementation) = this.implementations.get(&name) {
+            Ok(implementation.to_owned())
         } else {
-            let errmsg = format!("Verifier Factory: Name '{}' does't exists", name);
+            let errmsg = format!("Could not obtain registered Verifier '{}'.", name);
             return Err(Error::msg(errmsg));
         }
     }

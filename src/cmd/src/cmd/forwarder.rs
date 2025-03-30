@@ -18,37 +18,28 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use super::server::WebServer;
 use crate::cmd::management::ManagementServer;
-use axum::body::Body;
-use axum::extract::{Request, State};
-use axum::http::Response;
-use axum::middleware::Next;
+use axum::Router;
 use botwaf_forwarder::forwarder_base::BotwafForwarderManager;
 use botwaf_server::config::config::AppConfig;
+use botwaf_server::config::config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION};
 use botwaf_server::context::state::BotwafState;
-use botwaf_server::llm::handler::llm_base::LLMManager;
-use botwaf_server::{
-    config::config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
-    mgmt::apm,
-};
-use botwaf_updater::updater_base::BotwafUpdaterManager;
+use botwaf_server::mgmt::{apm, health::init as health_router};
 use botwaf_utils::panics::PanicHelper;
-use botwaf_verifier::verifier_base::BotwafVerifierManager;
+use botwaf_utils::tokio_signal::tokio_graceful_shutdown_signal;
 use clap::Command;
 use std::env;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
+use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
-pub struct StandaloneServer {}
+pub struct BotwafForwarderServer {}
 
-impl StandaloneServer {
-    pub const COMMAND_NAME: &'static str = "standalone";
+impl BotwafForwarderServer {
+    pub const COMMAND_NAME: &'static str = "forwarder";
 
     pub fn build() -> Command {
-        Command::new(Self::COMMAND_NAME).about("Run Botwaf All Components in One with Standalone.")
+        Command::new(Self::COMMAND_NAME).about("Run Botwaf based on AI LLM + Vector DB ModSec rules Forwarder.")
     }
 
     #[allow(unused)]
@@ -76,31 +67,49 @@ impl StandaloneServer {
 
     #[allow(unused)]
     async fn start(config: &Arc<AppConfig>, verbose: bool) {
-        LLMManager::init().await;
-        BotwafUpdaterManager::init().await;
-        BotwafVerifierManager::init().await;
-        BotwafForwarderManager::init().await;
-        WebServer::start(config, verbose, None, Some(Self::wrapped_botwaf_middleware)).await;
-    }
+        BotwafForwarderManager::init();
 
-    fn wrapped_botwaf_middleware(
-        state: State<BotwafState>,
-        request: Request<Body>,
-        next: Next,
-    ) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
-        Box::pin(BotwafForwarderManager::botwaf_middleware(state, request, next))
+        let app_state = BotwafState::new(&config).await;
+
+        let bind_addr = config.server.get_bind_addr();
+        tracing::info!("Starting Botwaf Forwarder server on {}", bind_addr);
+        let listener = match TcpListener::bind(&bind_addr).await {
+            Ok(l) => {
+                tracing::info!("Botwaf Forwarder server is ready on {}", bind_addr);
+                l
+            }
+            Err(e) => {
+                tracing::error!("Failed to bind to {}: {}", bind_addr, e);
+                panic!("Failed to bind to {}: {}", bind_addr, e);
+            }
+        };
+
+        let app_router = Router::new().merge(health_router()).with_state(app_state);
+        match axum::serve(listener, app_router.into_make_service())
+            .with_graceful_shutdown(tokio_graceful_shutdown_signal())
+            // .tcp_nodelay(true)
+            .await
+        {
+            Ok(_) => {
+                tracing::info!("Botwaf Forwarder server shut down gracefully");
+            }
+            Err(e) => {
+                tracing::error!("Error running web server: {}", e);
+                panic!("Error start Botwaf Forwarder server: {}", e);
+            }
+        }
     }
 
     fn print_banner(config: Arc<AppConfig>, verbose: bool) {
         // http://www.network-science.de/ascii/#larry3d,graffiti,basic,drpepper,rounded,roman
         let ascii_name = r#"
-     ____            __                             ___  
-    /\  _`\         /\ \__                        /'___\ 
-    \ \ \L\ \    ___\ \ ,_\  __  __  __     __   /\ \__/ 
-     \ \  _ <'  / __`\ \ \/ /\ \/\ \/\ \  /'__`\ \ \ ,__\
-      \ \ \L\ \/\ \L\ \ \ \_\ \ \_/ \_/ \/\ \L\.\_\ \ \_/
-       \ \____/\ \____/\ \__\\ \___x___/'\ \__/.\_\\ \_\ 
-        \/___/  \/___/  \/__/ \/__//__/   \/__/\/_/ \/_/  (Standalone)                                                     
+    ____                                              __                  
+    /\  _`\                                           /\ \                 
+    \ \ \L\_\___   _ __   __  __  __     __     _ __  \_\ \     __   _ __  
+     \ \  _\/ __`\/\`'__\/\ \/\ \/\ \  /'__`\  /\`'__\/'_` \  /'__`\/\`'__\
+      \ \ \/\ \L\ \ \ \/ \ \ \_/ \_/ \/\ \L\.\_\ \ \//\ \L\ \/\  __/\ \ \/ 
+       \ \_\ \____/\ \_\  \ \___x___/'\ \__/.\_\\ \_\\ \___,_\ \____\\ \_\ 
+        \/_/\/___/  \/_/   \/__//__/   \/__/\/_/ \/_/ \/__,_ /\/____/ \/_/  (Botwaf)
  "#;
         eprintln!("");
         eprintln!("{}", ascii_name);
