@@ -20,13 +20,12 @@
 
 use crate::{
     config::config::AppConfig,
-    sys::{handler::auth_handler::PrincipalType, route::auth_router::EXCLUDED_PATHS},
+    sys::{handler::auth_handler::PrincipalType, route::auth_router::EXCLUDED_PREFIX_PATHS},
 };
 use axum::body::Body;
 use botwaf_types::auth::{LoggedResponse, TokenWrapper};
 use botwaf_utils::{base64s::Base64Helper, webs};
 use chrono::{Duration, Utc};
-use globset::GlobSet;
 use hyper::{HeaderMap, Response, StatusCode, Uri};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use lazy_static::lazy_static;
@@ -172,7 +171,7 @@ pub fn is_passed_request(config: &Arc<AppConfig>, uri: &Uri) -> bool {
     // 1.1 Paths that must be excluded according to the authentication mechanism's requirements.
     // The root path is also excluded by default.
     // each match with start.
-    if EXCLUDED_PATHS.iter().any(|p| path.starts_with(p)) {
+    if EXCLUDED_PREFIX_PATHS.iter().any(|p| path.starts_with(p)) {
         return true;
     }
     // 1.2 According to the configuration of anonymous authentication path.

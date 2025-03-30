@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    #"benchmarks",
+    "benchmarks",
     "src/common/audit-log",
     "src/common/macro",
     "src/common/makestruct",

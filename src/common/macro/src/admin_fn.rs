@@ -22,19 +22,10 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input,
-    Attribute,
-    AttributeArgs,
-    Ident,
-    ItemFn,
-    Signature,
-    Type,
-    TypePath,
-    TypeReference,
-    Visibility,
+    parse_macro_input, Attribute, AttributeArgs, Ident, ItemFn, Signature, Type, TypePath, TypeReference, Visibility,
 };
 
-use crate::utils::{ extract_arg_map, extract_input_types, get_ident };
+use crate::utils::{extract_arg_map, extract_input_types, get_ident};
 
 /// Internal util macro to early return on error.
 macro_rules! ok {
@@ -66,11 +57,16 @@ pub(crate) fn process_admin_fn(args: TokenStream, input: TokenStream) -> TokenSt
     let ItemFn { attrs, vis, sig, block } = compute_fn;
 
     // extract fn arg list
-    let Signature { inputs, ident: fn_name, .. } = &sig;
+    let Signature {
+        inputs, ident: fn_name, ..
+    } = &sig;
 
     let arg_types = ok!(extract_input_types(inputs));
     if arg_types.len() < 2 {
-        ok!(error!(sig.span(), "Expect at least two argument for admin fn: (handler, query_ctx)"));
+        ok!(error!(
+            sig.span(),
+            "Expect at least two argument for admin fn: (handler, query_ctx)"
+        ));
     }
     let handler_type = ok!(extract_handler_type(&arg_types));
 
@@ -85,7 +81,7 @@ pub(crate) fn process_admin_fn(args: TokenStream, input: TokenStream) -> TokenSt
             ok!(get_ident(&arg_map, "sig_fn", arg_span)),
             ok!(get_ident(&arg_map, "ret", arg_span)),
             handler_type,
-            display_name
+            display_name,
         );
         result.extend(struct_code);
     }
@@ -93,7 +89,8 @@ pub(crate) fn process_admin_fn(args: TokenStream, input: TokenStream) -> TokenSt
     // preserve this fn
     let input_fn_code: TokenStream = (quote! {
         #sig { #block }
-    }).into();
+    })
+    .into();
 
     result.extend(input_fn_code);
     result
@@ -102,13 +99,17 @@ pub(crate) fn process_admin_fn(args: TokenStream, input: TokenStream) -> TokenSt
 /// Retrieve the handler type, `ProcedureServiceHandlerRef` or `TableMutationHandlerRef`.
 fn extract_handler_type(arg_types: &[Type]) -> Result<&Ident, syn::Error> {
     match &arg_types[0] {
-        Type::Reference(TypeReference { elem, .. }) =>
-            match &**elem {
-                Type::Path(TypePath { path, .. }) =>
-                    Ok(&path.segments.first().expect("Expected a reference of handler").ident),
-                other => { error!(other.span(), "Expected a reference of handler") }
+        Type::Reference(TypeReference { elem, .. }) => match &**elem {
+            Type::Path(TypePath { path, .. }) => {
+                Ok(&path.segments.first().expect("Expected a reference of handler").ident)
             }
-        other => { error!(other.span(), "Expected a reference of handler") }
+            other => {
+                error!(other.span(), "Expected a reference of handler")
+            }
+        },
+        other => {
+            error!(other.span(), "Expected a reference of handler")
+        }
     }
 }
 
@@ -122,29 +123,26 @@ fn build_struct(
     sig_fn: Ident,
     ret: Ident,
     handler_type: &Ident,
-    display_name_ident: Ident
+    display_name_ident: Ident,
 ) -> TokenStream {
     let display_name = display_name_ident.to_string();
     let ret = Ident::new(&format!("{ret}_datatype"), ret.span());
     let uppcase_display_name = display_name.to_uppercase();
     // Get the handler name in function state by the argument ident
     let (handler, snafu_type) = match handler_type.to_string().as_str() {
-        "ProcedureServiceHandlerRef" =>
-            (
-                Ident::new("procedure_service_handler", handler_type.span()),
-                Ident::new("MissingProcedureServiceHandlerSnafu", handler_type.span()),
-            ),
+        "ProcedureServiceHandlerRef" => (
+            Ident::new("procedure_service_handler", handler_type.span()),
+            Ident::new("MissingProcedureServiceHandlerSnafu", handler_type.span()),
+        ),
 
-        "TableMutationHandlerRef" =>
-            (
-                Ident::new("table_mutation_handler", handler_type.span()),
-                Ident::new("MissingTableMutationHandlerSnafu", handler_type.span()),
-            ),
+        "TableMutationHandlerRef" => (
+            Ident::new("table_mutation_handler", handler_type.span()),
+            Ident::new("MissingTableMutationHandlerSnafu", handler_type.span()),
+        ),
         handler => ok!(error!(handler_type.span(), format!("Unknown handler type: {handler}"))),
     };
 
-    (
-        quote! {
+    (quote! {
         #(#attrs)*
         #[derive(Debug)]
         #vis struct #name;
@@ -170,8 +168,8 @@ fn build_struct(
             }
 
             fn eval(&self, func_ctx: FunctionContext, columns: &[VectorRef]) ->  Result<VectorRef> {
-                // Ensure under the `greptime` catalog for security
-                ensure_greptime!(func_ctx);
+                // Ensure under the `botwaf` catalog for security
+                ensure_botwaf!(func_ctx);
 
                 let columns_num = columns.len();
                 let rows_num = if columns.is_empty() {
@@ -226,6 +224,6 @@ fn build_struct(
             }
 
         }
-    }
-    ).into()
+    })
+    .into()
 }

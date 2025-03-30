@@ -27,10 +27,7 @@ use lazy_static::lazy_static;
 use prometheus::*;
 
 lazy_static! {
-    pub static ref PANIC_COUNTER: IntCounter = register_int_counter!(
-        "greptime_panic_counter",
-        "panic_counter"
-    ).unwrap();
+    pub static ref PANIC_COUNTER: IntCounter = register_int_counter!("botwaf_panic_counter", "panic_counter").unwrap();
 }
 
 pub fn set_panic_hook() {
@@ -41,42 +38,38 @@ pub fn set_panic_hook() {
     // will include the current span, allowing the context in which the panic
     // occurred to be recorded.
     let default_hook = panic::take_hook();
-    panic::set_hook(
-        Box::new(move |panic| {
-            let backtrace = Backtrace::new();
-            let backtrace = format!("{backtrace:?}");
-            if let Some(location) = panic.location() {
-                tracing::error!(
+    panic::set_hook(Box::new(move |panic| {
+        let backtrace = Backtrace::new();
+        let backtrace = format!("{backtrace:?}");
+        if let Some(location) = panic.location() {
+            tracing::error!(
                 message = %panic,
                 backtrace = %backtrace,
                 panic.file = location.file(),
                 panic.line = location.line(),
                 panic.column = location.column(),
             );
-            } else {
-                tracing::error!(message = %panic, backtrace = %backtrace);
-            }
-            PANIC_COUNTER.inc();
-            default_hook(panic);
-        })
-    );
+        } else {
+            tracing::error!(message = %panic, backtrace = %backtrace);
+        }
+        PANIC_COUNTER.inc();
+        default_hook(panic);
+    }));
 
     #[cfg(feature = "deadlock_detection")]
-    let _ = std::thread::spawn(move || {
-        loop {
-            std::thread::sleep(Duration::from_secs(5));
-            let deadlocks = parking_lot::deadlock::check_deadlock();
-            if deadlocks.is_empty() {
-                continue;
-            }
+    let _ = std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_secs(5));
+        let deadlocks = parking_lot::deadlock::check_deadlock();
+        if deadlocks.is_empty() {
+            continue;
+        }
 
-            tracing::info!("{} deadlocks detected", deadlocks.len());
-            for (i, threads) in deadlocks.iter().enumerate() {
-                tracing::info!("Deadlock #{}", i);
-                for t in threads {
-                    tracing::info!("Thread Id {:#?}", t.thread_id());
-                    tracing::info!("{:#?}", t.backtrace());
-                }
+        tracing::info!("{} deadlocks detected", deadlocks.len());
+        for (i, threads) in deadlocks.iter().enumerate() {
+            tracing::info!("Deadlock #{}", i);
+            for t in threads {
+                tracing::info!("Thread Id {:#?}", t.thread_id());
+                tracing::info!("{:#?}", t.backtrace());
             }
         }
     });

@@ -20,15 +20,8 @@
 
 use super::llm_base::ILLMHandler;
 use crate::config::config::{self, LlmProperties};
-use botwaf_types::knowledge::{KnowledgeCategory, KnowledgeStatus, KnowledgeUploadInfo};
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{BufRead, BufReader},
-    sync::Arc,
-};
-
 use anyhow::{Ok, Result};
+use botwaf_types::knowledge::{KnowledgeCategory, KnowledgeStatus, KnowledgeUploadInfo};
 use langchain_rust::{
     chain::{Chain, ConversationalRetrieverChainBuilder},
     embedding::openai::OpenAiEmbedder,
@@ -42,6 +35,12 @@ use langchain_rust::{
     schemas::{Document, FunctionCallBehavior, Message},
     template_jinja2,
     vectorstore::{pgvector::StoreBuilder, Retriever, VecStoreOptions, VectorStore},
+};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{BufRead, BufReader},
+    sync::Arc,
 };
 
 /// see:https://github.com/wl4g-ai/langchain-rust/blob/main/examples/conversational_retriever_chain_with_vector_store.rs
@@ -109,8 +108,8 @@ impl LangchainLLMHandler {
             .with_temperature(config::get_config().services.llm.generate.temperature)
             .with_candidate_count(config::get_config().services.llm.generate.candidate_count)
             // TODO: whether the support configuration of this items?
-            // .with_functions(Vec::new())
-            // .with_stop_words(Vec::new())
+            .with_functions(Vec::new())
+            .with_stop_words(Vec::new())
             .with_top_k(config::get_config().services.llm.generate.top_k)
             .with_top_p(config::get_config().services.llm.generate.top_p)
             // .with_seed(0)

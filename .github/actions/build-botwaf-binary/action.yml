@@ -1,0 +1,49 @@
+name: Build botwaf binary
+description: Build and upload the single linux artifact
+inputs:
+  base-image:
+    description: Base image to build botwaf
+    required: true
+  features:
+    description: Cargo features to build
+    required: true
+  cargo-profile:
+    description: Cargo profile to build
+    required: true
+  artifacts-dir:
+    description: Directory to store artifacts
+    required: true
+  version:
+    description: Version of the artifact
+    required: true
+  working-dir:
+    description: Working directory to build the artifacts
+    required: false
+    default: .
+  build-android-artifacts:
+    description: Build android artifacts
+    required: false
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Build botwaf binary
+      shell: bash
+      if: ${{ inputs.build-android-artifacts == 'false' }}
+      run: |
+        cd ${{ inputs.working-dir }} && \
+        make build-by-dev-builder \
+          CARGO_PROFILE=${{ inputs.cargo-profile }} \
+          FEATURES=${{ inputs.features }} \
+          BASE_IMAGE=${{ inputs.base-image }}
+
+    - name: Upload artifacts
+      uses: ./.github/actions/upload-artifacts
+      if: ${{ inputs.build-android-artifacts == 'false' }}
+      env:
+        PROFILE_TARGET: ${{ inputs.cargo-profile == 'dev' && 'debug' || inputs.cargo-profile }}
+      with:
+        artifacts-dir: ${{ inputs.artifacts-dir }}
+        target-file: ./target/$PROFILE_TARGET/botwaf
+        version: ${{ inputs.version }}
+        working-dir: ${{ inputs.working-dir }}

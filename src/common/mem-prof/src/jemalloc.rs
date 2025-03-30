@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2023 Botwaf Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@
 mod error;
 
 use std::{
-    ffi::{CString, c_char},
+    ffi::{c_char, CString},
     path::PathBuf,
 };
 
 use error::{BuildTempPathSnafu, DumpProfileDataSnafu, OpenTempFileSnafu, ProfilingNotEnabledSnafu, ReadOptProfSnafu};
-use snafu::{ResultExt, ensure};
+use snafu::{ensure, ResultExt};
 use tokio::io::AsyncReadExt;
 
 use crate::error::Result;
@@ -30,7 +30,12 @@ const OPT_PROF: &[u8] = b"opt.prof\0";
 
 pub async fn dump_profile() -> Result<Vec<u8>> {
     ensure!(is_prof_enabled()?, ProfilingNotEnabledSnafu);
-    let tmp_path = tempfile::tempdir().map_err(|_| BuildTempPathSnafu { path: std::env::temp_dir() }.build())?;
+    let tmp_path = tempfile::tempdir().map_err(|_| {
+        BuildTempPathSnafu {
+            path: std::env::temp_dir(),
+        }
+        .build()
+    })?;
 
     let mut path_buf = PathBuf::from(tmp_path.path());
     path_buf.push("myapp.hprof");
@@ -50,7 +55,9 @@ pub async fn dump_profile() -> Result<Vec<u8>> {
         unsafe { tikv_jemalloc_ctl::raw::write(PROF_DUMP, ptr).context(DumpProfileDataSnafu { path: path_buf })? }
     }
 
-    let mut f = tokio::fs::File::open(path.as_str()).await.context(OpenTempFileSnafu { path: &path })?;
+    let mut f = tokio::fs::File::open(path.as_str())
+        .await
+        .context(OpenTempFileSnafu { path: &path })?;
     let mut buf = vec![];
     let _ = f.read_to_end(&mut buf).await.context(OpenTempFileSnafu { path })?;
     Ok(buf)

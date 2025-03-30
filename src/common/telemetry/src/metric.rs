@@ -20,8 +20,8 @@
 
 // use std::sync::Arc;
 
-// use greptime_proto::prometheus::remote::{Sample, TimeSeries};
-// use greptime_proto::prometheus::*;
+// use botwaf_proto::prometheus::remote::{Sample, TimeSeries};
+// use botwaf_proto::prometheus::*;
 // use prometheus::proto::{LabelPair, MetricFamily, MetricType};
 // use prometheus::{Encoder, TextEncoder};
 

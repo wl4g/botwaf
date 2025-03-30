@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Botwaf Community Slack
+    url: https://wl4g.com/slack
+    about: Get free help from the Botwaf community
+  - name: Botwaf Community Discussion
+    url: https://github.com/wl4g/botwaf/discussions
+    about: Get free help from the Botwaf community

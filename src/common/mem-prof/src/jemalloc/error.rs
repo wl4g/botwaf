@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2023 Botwaf Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -74,6 +74,8 @@ impl ErrorExt for Error {
 
 impl From<Error> for crate::error::Error {
     fn from(e: Error) -> Self {
-        Self::Internal { source: BoxedError::new(e) }
+        Self::Internal {
+            source: BoxedError::new(e),
+        }
     }
 }

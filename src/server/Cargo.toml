@@ -99,3 +99,14 @@ chrono.workspace = true
 # see1:https://github1s.com/juhaku/utoipa/blob/utoipa-swagger-ui-9.0.0/utoipa-swagger-ui/Cargo.toml#L52-L53
 # see2:https://github1s.com/juhaku/utoipa/blob/utoipa-swagger-ui-9.0.0/utoipa-swagger-ui/build.rs#L105-L106
 zip = "=2.3.0"
+
+[features]
+default = []
+testing = []
+
+[[bench]]
+name = "bench_main"
+harness = false
+
+[dev-dependencies]
+criterion.workspace = true

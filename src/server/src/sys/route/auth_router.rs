@@ -70,7 +70,7 @@ pub const AUTH_WALLET_ETHERS_VERIFY_URI: &str = "/auth/wallet/ethers/verify";
 pub const AUTH_LOGOUT_URI: &str = "/auth/logout";
 pub const STATIC_RESOURCES_PREFIX_URI: &str = "/static";
 
-pub const EXCLUDED_PATHS: [&str; 8] = [
+pub const EXCLUDED_PREFIX_PATHS: [&str; 8] = [
     AUTH_PASSWORD_PUBKEY_URI,
     AUTH_PASSWORD_VERIFY_URI,
     AUTH_CONNECT_OIDC_URI,
