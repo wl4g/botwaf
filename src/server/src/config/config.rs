@@ -21,13 +21,15 @@
 use crate::mgmt::apm::logging::LogMode;
 use crate::mgmt::health::HEALTHZ_URI;
 use arc_swap::ArcSwap;
+use botwaf_utils::secrets::SecretHelper;
 use config::Config;
 use dotenv::dotenv;
 use globset::{Glob, GlobSet, GlobSetBuilder};
+use jsonwebtoken::Algorithm;
 use lazy_static::lazy_static;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{env, ops::Deref, sync::Arc, time::Duration};
+use std::{env, ops::Deref, str::FromStr, sync::Arc, time::Duration};
 use validator::Validate;
 
 // Global program information.
@@ -179,6 +181,8 @@ pub struct AuthProperties {
     pub jwt_validity_rk: Option<u64>,
     #[serde(rename = "jwt-secret")]
     pub jwt_secret: Option<String>,
+    #[serde(rename = "jwt-algorithm")]
+    pub jwt_algorithm: Option<String>,
     #[serde(rename = "anonymous-paths")]
     pub anonymous_paths: Option<Vec<String>>,
     #[serde(rename = "oidc")]
@@ -635,7 +639,8 @@ impl Default for AuthProperties {
             jwt_rk_name: Some(String::from("_rk")),
             jwt_validity_ak: Some(3600_000),
             jwt_validity_rk: Some(86400_000),
-            jwt_secret: Some("changeit".to_string()),
+            jwt_secret: None,
+            jwt_algorithm: None,
             anonymous_paths: None,
             oidc: OidcProperties::default(),
             github: GithubProperties::default(),
@@ -921,6 +926,8 @@ pub struct AppConfig {
     pub inner: AppConfigProperties,
     pub auth_jwt_ak_name: String,
     pub auth_jwt_rk_name: String,
+    pub auth_jwt_secret: String,
+    pub auth_jwt_algorithm: Algorithm,
     pub auth_anonymous_glob_matcher: Option<GlobSet>,
 }
 
@@ -942,7 +949,7 @@ impl AppConfig {
             }
             globset = Some(builder.build().unwrap());
         } else {
-            // Add internal components routes to defaults.
+            // Add built-in components routes to defaults.
             let mut builder = GlobSetBuilder::new();
             builder.add(Glob::new(HEALTHZ_URI).unwrap());
             builder.add(Glob::new(format!("{}/**", HEALTHZ_URI).as_str()).unwrap());
@@ -953,6 +960,26 @@ impl AppConfig {
             builder.add(Glob::new("/static/**").unwrap());
             globset = Some(builder.build().unwrap());
         }
+
+        let jwt_secret = match config.auth.jwt_secret.to_owned() {
+            Some(secret) => secret,
+            None => {
+                let generated_jwt_secret = SecretHelper::generate_secret_base64(32).to_string();
+                tracing::debug!("Generated the jwt secret: {}", generated_jwt_secret);
+                generated_jwt_secret
+            }
+        };
+
+        let auth_jwt_algorithm = Algorithm::from_str(
+            config
+                .auth
+                .jwt_algorithm
+                .to_owned()
+                .unwrap_or(String::from("HS256"))
+                .as_str(),
+        )
+        .ok()
+        .expect("Invalid JWT algorithm configured");
 
         Arc::new(AppConfig {
             inner: config.clone(),
@@ -968,6 +995,8 @@ impl AppConfig {
                 .to_owned()
                 .unwrap_or(String::from("_rk"))
                 .to_string(),
+            auth_jwt_secret: jwt_secret,
+            auth_jwt_algorithm,
             auth_anonymous_glob_matcher: globset,
         })
     }

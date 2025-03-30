@@ -18,17 +18,29 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-pub mod base64s;
-pub mod cgroup;
-pub mod ethers;
-pub mod httpclients;
-pub mod inets;
-pub mod mems;
-pub mod panics;
-pub mod rsa_ciphers;
-pub mod secrets;
-pub mod serde_beans;
-pub mod snowflake;
-pub mod tokio_signal;
-pub mod types;
-pub mod webs;
+use base64::{engine::general_purpose, Engine};
+
+pub struct Base64Helper {}
+
+impl Base64Helper {
+    pub fn encode(input: &[u8]) -> String {
+        general_purpose::STANDARD.encode(input)
+    }
+
+    pub fn decode(input: &str) -> Result<Vec<u8>, base64::DecodeError> {
+        general_purpose::STANDARD.decode(input)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_base64() {
+        let original = b"Hello, World!";
+        let encoded = Base64Helper::encode(original);
+        let decoded = Base64Helper::decode(&encoded).unwrap();
+        assert_eq!(original, decoded.as_slice());
+    }
+}

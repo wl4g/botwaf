@@ -21,7 +21,7 @@
 use crate::{config::config::AppConfig, sys::handler::auth_handler::PrincipalType};
 use axum::body::Body;
 use botwaf_types::auth::{LoggedResponse, TokenWrapper};
-use botwaf_utils::webs;
+use botwaf_utils::{base64s::Base64Helper, webs};
 use chrono::{Duration, Utc};
 use hyper::{HeaderMap, Response, StatusCode};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
@@ -75,21 +75,15 @@ pub fn create_jwt(
         ext: extra_claims,
     };
 
-    encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(config.auth.jwt_secret.to_owned().unwrap().as_ref()),
-    )
-    .expect("failed to encode jwt")
+    let secret = &Base64Helper::decode(&config.auth_jwt_secret.to_owned()).unwrap();
+    let header = Header::new(config.auth_jwt_algorithm);
+    encode(&header, &claims, &EncodingKey::from_secret(secret)).expect("Failed to encode jwt")
 }
 
 pub fn validate_jwt(config: &Arc<AppConfig>, token: &str) -> Result<AuthUserClaims, jsonwebtoken::errors::Error> {
-    let validation = Validation::default();
-    let token_data = decode::<AuthUserClaims>(
-        token,
-        &DecodingKey::from_secret(config.auth.jwt_secret.to_owned().unwrap().as_ref()),
-        &validation,
-    )?;
+    let secret = &Base64Helper::decode(&config.auth_jwt_secret.to_owned()).unwrap();
+    let validation = Validation::new(config.auth_jwt_algorithm);
+    let token_data = decode::<AuthUserClaims>(token, &DecodingKey::from_secret(secret), &validation)?;
     Ok(token_data.claims)
 }
 

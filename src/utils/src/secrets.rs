@@ -18,17 +18,16 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-pub mod base64s;
-pub mod cgroup;
-pub mod ethers;
-pub mod httpclients;
-pub mod inets;
-pub mod mems;
-pub mod panics;
-pub mod rsa_ciphers;
-pub mod secrets;
-pub mod serde_beans;
-pub mod snowflake;
-pub mod tokio_signal;
-pub mod types;
-pub mod webs;
+use crate::base64s::Base64Helper;
+use ring::rand::{SecureRandom, SystemRandom};
+
+pub struct SecretHelper {}
+
+impl SecretHelper {
+    pub fn generate_secret_base64(bits: usize) -> String {
+        let rng = SystemRandom::new();
+        let mut secret = vec![0u8; bits];
+        rng.fill(&mut secret).expect("Failed to generate random secret.");
+        Base64Helper::encode(&secret)
+    }
+}

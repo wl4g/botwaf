@@ -120,7 +120,7 @@ pub async fn auth_middleware(State(state): State<BotwafState>, req: Request<Body
         .auth_anonymous_glob_matcher
         .as_ref()
         .map(|glob| glob.is_match(path))
-        .unwrap_or(false)
+        .unwrap_or(true)
     {
         // If it is an anonymous path, pass it directly.
         return next.run(req).await;
@@ -213,8 +213,8 @@ async fn validate_token(state: &BotwafState, ak: &str) -> (bool, Option<AuthUser
                 (false, Some(claims))
             }
         }
-        Err(_) => {
-            tracing::warn!("Invalid the token because expired for {}", ak);
+        Err(e) => {
+            tracing::warn!("Invalid the token or expired cause by: {:?}", e);
             (false, None)
         }
     }

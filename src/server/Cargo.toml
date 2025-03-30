@@ -44,6 +44,11 @@ utoipa-swagger-ui = { workspace = true, features = ["axum"] }
 futures.workspace = true
 rust-embed.workspace = true
 mime_guess.workspace = true
+
+# Lang libs
+base64 = { workspace = true}
+hex = { workspace = true}
+
 # Database libs
 mongodb = { workspace = true }
 sqlx = { workspace = true, features = [

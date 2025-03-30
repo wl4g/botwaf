@@ -20,11 +20,13 @@
 
 extern crate openssl;
 
-use openssl::rsa::{ Rsa, Padding };
+use base64::{engine::general_purpose, Engine as _};
 use openssl::pkey::Private;
+use openssl::rsa::{Padding, Rsa};
 use openssl::sha::sha256;
-use base64::{ engine::general_purpose, Engine as _ };
 use std::error::Error;
+
+use crate::base64s::Base64Helper;
 
 pub struct RSACipher {
     private_key: Rsa<Private>,
@@ -87,9 +89,11 @@ impl RSACipher {
     // Private key decryption with base64.
     pub fn decrypt_from_base64(&self, base64_ciphertext: &str) -> Result<Vec<u8>, Box<dyn Error>> {
         let mut buf: Vec<u8> = vec![0; self.private_key.size() as usize];
-        match base64_decode(base64_ciphertext) {
+        match Base64Helper::decode(base64_ciphertext) {
             std::result::Result::Ok(ciphertext) => {
-                let len = self.private_key.private_decrypt(&ciphertext, &mut buf, Padding::PKCS1)?;
+                let len = self
+                    .private_key
+                    .private_decrypt(&ciphertext, &mut buf, Padding::PKCS1)?;
                 buf.truncate(len);
                 Ok(buf)
             }
@@ -118,14 +122,6 @@ impl RSACipher {
             Err("Verification failed".into())
         }
     }
-}
-
-pub fn base64_encode(input: &[u8]) -> String {
-    general_purpose::STANDARD.encode(input)
-}
-
-pub fn base64_decode(input: &str) -> Result<Vec<u8>, base64::DecodeError> {
-    general_purpose::STANDARD.decode(input)
 }
 
 #[cfg(test)]
@@ -171,13 +167,5 @@ mod tests {
         // Test failed verification with wrong message
         let wrong_message = b"Wrong message";
         assert!(cipher.verify(wrong_message, &signature).is_err());
-    }
-
-    #[test]
-    fn test_base64() {
-        let original = b"Hello, World!";
-        let encoded = base64_encode(original);
-        let decoded = base64_decode(&encoded).unwrap();
-        assert_eq!(original, decoded.as_slice());
     }
 }

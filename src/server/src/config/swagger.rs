@@ -130,6 +130,7 @@ pub fn join_context_path(config: &AppConfig, path: String) -> String {
     }
     match &config.server.context_path {
         // Add the prefix context path.
+        Some(cp) if cp == "/" => path,
         Some(cp) => format!("{}{}", cp, path),
         None => path,
     }
