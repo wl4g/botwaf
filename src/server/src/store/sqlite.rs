@@ -32,7 +32,7 @@ use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
 use tracing::{debug, info};
 
 //
-// const MIGRATION_INIT_SQL: &str = include_str!("../../migrations/20240710083754_init.sql");/deployment/migrations
+// const MIGRATION_INIT_SQL: &str = include_str!("../deployment/migrations/20240710083754_init.sql");
 
 pub struct SQLiteRepository<T: Any + Send + Sync> {
     phantom: PhantomData<T>,
@@ -90,7 +90,7 @@ impl<T: Any + Send + Sync> SQLiteRepository<T> {
         // let migrations_dir = std::env
         //   ::var("CARGO_MANIFEST_DIR")
         //   .unwrap_or_else(|_| default_dir.to_string());
-        // let migrations_dir = std::path::Path::new(&current_dir).join("./deployment/migrations");
+        // let migrations_dir = std::path::Path::new(&current_dir).join("../deployment/migrations");
         // let results = sqlx::migrate::Migrator::new(migrations).await.unwrap().run(&pool).await;
         // debug!("Migration result: {:?}", results);
         // match results {
@@ -100,7 +100,7 @@ impl<T: Any + Send + Sync> SQLiteRepository<T> {
         //   }
         // }
 
-        let results = sqlx::migrate!("../../deployment/migrations").run(&pool).await;
+        let results = sqlx::migrate!("../../tooling/deploy/migrations").run(&pool).await;
         debug!("Migration result: {:?}", results);
         match results {
             Ok(_) => tracing::info!("Migration success"),

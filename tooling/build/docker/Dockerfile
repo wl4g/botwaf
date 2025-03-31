@@ -24,19 +24,30 @@
 #####################################################
 FROM registry.cn-shenzhen.aliyuncs.com/wl4g/rust:1.85 AS base
 
-# Set up fast apt sources. (internal: http://mirrors.cloud.aliyuncs.com, external: http://mirrors.aliyun.com)
+ARG BUILD_REPO_URL
+ARG BUILD_BRANCH
+ARG BUILD_TAG
+ARG BUILD_COMMIT_ID
+ARG BUILD_TIME
+ARG BUILD_MIRROR_URL
+RUN echo "[STAGE 1] Using the MIRROR_URL: ${BUILD_MIRROR_URL}"
+
+# Set up fast apt sources and such as:
+#   Debian Official Default: http://deb.debian.org
+#   Alibaba Cloud Internal: http://mirrors.cloud.aliyuncs.com
+#   Alibaba Cloud External: http://mirrors.aliyun.com
 #
 # Notice: If you use modsecurity-1.0.0, you must rely on libmodsecurity>=3.0.13. For Linux, 
 # see: /usr/lib/x86_64-linux-gnu/pkgconfig/modsecurity.pc. Rust-1.85 is the latest version of 
 # the default source of debian-12 and only supports libmodsecurity-3.0.9.
 #
 RUN echo > /etc/apt/sources.list && \
-    echo 'deb http://mirrors.cloud.aliyuncs.com/debian bookworm main contrib non-free non-free-firmware' > /etc/apt/sources.list && \
-    echo 'deb-src http://mirrors.cloud.aliyuncs.com/debian bookworm main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
-    echo 'deb http://mirrors.cloud.aliyuncs.com/debian-security bookworm-security main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
-    echo 'deb-src http://mirrors.cloud.aliyuncs.com/debian-security bookworm-security main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
-    echo 'deb http://mirrors.cloud.aliyuncs.com/debian bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
-    echo 'deb-src http://mirrors.cloud.aliyuncs.com/debian bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
+    echo "deb ${BUILD_MIRROR_URL}/debian bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
+    echo "deb-src ${BUILD_MIRROR_URL}/debian bookworm main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+    echo "deb ${BUILD_MIRROR_URL}/debian-security bookworm-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+    echo "deb-src ${BUILD_MIRROR_URL}/debian-security bookworm-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+    echo "deb ${BUILD_MIRROR_URL}/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+    echo "deb-src ${BUILD_MIRROR_URL}/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
     apt-get update && \
     apt-get install -y libmodsecurity3 libmodsecurity-dev pkg-config && \
     apt-get clean && \
@@ -80,10 +91,28 @@ RUN cargo install --path .
 ### STAGE 4: Build Application Runtime Layer. ###
 #################################################
 FROM registry.cn-shenzhen.aliyuncs.com/wl4g/debian:bookworm
+
+ARG BUILD_REPO_URL
+ARG BUILD_BRANCH
+ARG BUILD_TAG
+ARG BUILD_COMMIT_ID
+ARG BUILD_TIME
+ARG BUILD_MIRROR_URL
+RUN echo "[STAGE 4] Using the MIRROR_URL: ${BUILD_MIRROR_URL}"
+
+LABEL maintainer="James Wong<jameswong1376@gmail.com>" \
+  description="Botwaf - A Mini Open Source AI Bot WAF written in Rust." \
+  buildRepoUrl=${BUILD_REPO_URL} \
+  buildBranch=${BUILD_BRANCH} \
+  buildTag=${BUILD_TAG} \
+  buildCommitId=${BUILD_COMMIT_ID} \
+  buildTime=${BUILD_TIME} \
+  buildMirrorURL=${BUILD_MIRROR_URL}
+
 # Set up fast apt sources. (internal: http://mirrors.cloud.aliyuncs.com, external: http://mirrors.aliyun.com)
-RUN echo 'deb http://mirrors.cloud.aliyuncs.com/debian bookworm main contrib non-free non-free-firmware' > /etc/apt/sources.list && \
-    echo 'deb http://mirrors.cloud.aliyuncs.com/debian-security bookworm-security main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
-    echo 'deb http://mirrors.cloud.aliyuncs.com/debian bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list && \
+RUN echo "deb ${BUILD_MIRROR_URL}/debian bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
+    echo "deb ${BUILD_MIRROR_URL}/debian-security bookworm-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+    echo "deb ${BUILD_MIRROR_URL}/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
     apt-get update && \
     apt-get install -y tini libmodsecurity3 libssl3 && \
     apt-get clean && \
