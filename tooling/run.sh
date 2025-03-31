@@ -79,12 +79,12 @@ Usage: ./$(basename $0) [OPTIONS] [arg1] [arg2] ...
                         -A,--all                    Push image for all components.
     build-push                                      Build with Crate and push images for all components.
     prune-image                                     Prune unused all images. (tag=none)
-    deploy-standalone                               Deploy all services with docker standalone mode.
+    deploy-docker                                   Deploy all services with docker compose mode.
                         -S,--status                 Display status for all services.
                         -U,--up                     Startup to all services.
-                           --prune-all-volumes      Remove all data volumes before per initial deploy. Note: be careful!
+                           --prune-all-volumes      Remove all data volumes before per initial deploy. (Note: be careful! development only)
                         -D,--down                   Shuwdown to all services.
-                           --prune-all-volumes      Remove all data volumes after per destory deploy. Note: be careful!
+                           --prune-all-volumes      Remove all data volumes after per destory deploy. (Note: be careful! development only)
 "
 }
 
