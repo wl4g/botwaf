@@ -57,16 +57,16 @@ function usages() {
     echo $"Botwaf Development and Building and Deployment fast Tooling.
 # for examples
 export GPG_PRIVATE_KEY='-----BEGIN PGP PRIVATE KEY BLOCK-----\n...'
-export GPG_PASSPHRASE='abc'
+export GPG_PASSPHRASE='<YOUR_GPG_PASSPHRASE>'
 export IMAGE_REGISTRY='docker.io/wl4g' # eg: docker.io/wl4g(default), ghcr.io/wl4g, registry.cn-shenzhen.aliyuncs.com/wl4g, ccr.ccs.tencentyun.com/wl4g
-export IMAGE_USERNAME='myuser'
-export IMAGE_TOKEN='abc'
+export IMAGE_USERNAME='<YOUR_REGISTRY_USER>'
+export IMAGE_TOKEN='<YOUR_REGISTRY_TOKEN>'
 
 Usage: ./$(basename $0) [OPTIONS] [arg1] [arg2] ...
     version                                         Print APP project version.
     gpg-verify                                      Install and Verifying GPG keys on Linux only.
     build-on-host                                   Build executable binary file on Host.
-    #build-deploy                                   Build and deploy to Maven central.
+    #build-deploy                                   Build and deploy to Crate central.
     build-image                                     Build components image.
                         -s,--server                 Build image for Server.
                         -d,--initdb                 Build image for Init DB.
@@ -77,7 +77,7 @@ Usage: ./$(basename $0) [OPTIONS] [arg1] [arg2] ...
                         -d,--initdb                 Push image for Init DB.
                         -u,--ui                     Push image for UI.
                         -A,--all                    Push image for all components.
-    build-push                                      Build with Maven and push images for all components.
+    build-push                                      Build with Crate and push images for all components.
     prune-image                                     Prune unused all images. (tag=none)
     deploy-standalone                               Deploy all services with docker standalone mode.
                         -S,--status                 Display status for all services.
@@ -189,7 +189,7 @@ function build::binary_on_host() {
     log "Build binary with args: $build_args..."
     SWAGGER_UI_DOWNLOAD_URL=file:$BASE_DIR/deps/swagger-ui-5.17.14.zip && \
     RUSTFLAGS="-C debug-prefix-map=$(pwd)=." && \
-    cargo build $build_args
+    cargo build --features tokio-console,profiling $build_args
     log "Build binary completed!"
 }
 
@@ -208,6 +208,7 @@ function build::docker_image() {
     docker build \
         -t wl4g/${image_name}:${image_tag} \
         -f ${BASE_DIR}/tooling/build/docker/${dockerfile} \
+        --build-arg BUILD_ARGS="--features tokio-console,profiling" \
         --build-arg BUILD_REPO_URL=$(git remote -v | head -1 | awk -F ' ' '{print $2}') \
         --build-arg BUILD_COMMIT_ID=$(git log | head -1 | awk -F ' ' '{print $2}' | cut -c 1-12) \
         --build-arg BUILD_BRANCH=$(git rev-parse --abbrev-ref HEAD) \

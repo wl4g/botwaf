@@ -24,13 +24,8 @@
 #####################################################
 FROM registry.cn-shenzhen.aliyuncs.com/wl4g/rust:1.85 AS base
 
-ARG BUILD_REPO_URL
-ARG BUILD_BRANCH
-ARG BUILD_TAG
-ARG BUILD_COMMIT_ID
-ARG BUILD_TIME
 ARG BUILD_MIRROR_URL
-RUN echo "[STAGE 1] Using the MIRROR_URL: ${BUILD_MIRROR_URL}"
+RUN echo "[STAGE 1] Using the BUILD_MIRROR_URL: ${BUILD_MIRROR_URL}"
 
 # Set up fast apt sources and such as:
 #   Debian Official Default: http://deb.debian.org
@@ -78,6 +73,10 @@ RUN find src -type f -not -name "Cargo.toml" -delete && \
 ### STAGE 3: Build Application Source Layer. ###
 ################################################
 FROM base AS builder
+
+ARG BUILD_ARGS
+RUN echo "[STAGE 3] Using the BUILD_ARGS: ${BUILD_ARGS}"
+
 WORKDIR /usr/src/botwaf
 # Copy the build cache of dependency Stage 2
 COPY --from=deps /usr/src/botwaf/target target
@@ -85,23 +84,25 @@ COPY --from=deps /usr/local/cargo /usr/local/cargo
 # Copy the rest source files of the project
 COPY . .
 # Compile the application source files.
-RUN cargo install --path .
+RUN cargo install --path ${BUILD_ARGS} .
 
 #################################################
 ### STAGE 4: Build Application Runtime Layer. ###
 #################################################
 FROM registry.cn-shenzhen.aliyuncs.com/wl4g/debian:bookworm
 
+ARG BUILD_ARGS
 ARG BUILD_REPO_URL
 ARG BUILD_BRANCH
 ARG BUILD_TAG
 ARG BUILD_COMMIT_ID
 ARG BUILD_TIME
 ARG BUILD_MIRROR_URL
-RUN echo "[STAGE 4] Using the MIRROR_URL: ${BUILD_MIRROR_URL}"
+RUN echo "[STAGE 4] Using the BUILD_ARGS: ${BUILD_ARGS}, BUILD_MIRROR_URL: ${BUILD_MIRROR_URL}"
 
 LABEL maintainer="James Wong<jameswong1376@gmail.com>" \
   description="Botwaf - A Mini Open Source AI Bot WAF written in Rust." \
+  buildArgs=${BUILD_ARGS} \
   buildRepoUrl=${BUILD_REPO_URL} \
   buildBranch=${BUILD_BRANCH} \
   buildTag=${BUILD_TAG} \
