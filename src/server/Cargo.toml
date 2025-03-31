@@ -106,6 +106,7 @@ testing = []
 
 [[bench]]
 name = "bench_main"
+path = "benches/bench_main.rs"
 harness = false
 
 [dev-dependencies]

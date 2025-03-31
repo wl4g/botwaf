@@ -56,6 +56,7 @@ WORKDIR /usr/src/botwaf
 # Copy cargo configuration files and directory structure
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
+COPY benchmarks ./benchmarks
 # Remove all files except Cargo.toml
 # 1. Create minimal source structure for each crate
 # 2. Create root main.rs
@@ -65,7 +66,8 @@ RUN find src -type f -not -name "Cargo.toml" -delete && \
     find src -type d -name src -o -path "*/src" | xargs -I{} mkdir -p {} && \
     find src -type d -name src | xargs -I{} touch {}/lib.rs && \
     mkdir -p src/cmd/src/bin && \
-    echo "fn main() {}" > src/cmd/src/bin/dummy.rs && \
+    echo "fn main() {}" > src/cmd/src/bin/botwaf.rs && \
+    ls -R /usr/src/botwaf && \
     cargo build --release && \
     find . -name "*.rs" -delete
 
@@ -84,7 +86,7 @@ COPY --from=deps /usr/local/cargo /usr/local/cargo
 # Copy the rest source files of the project
 COPY . .
 # Compile the application source files.
-RUN cargo install --path ${BUILD_ARGS} .
+RUN cargo install ${BUILD_ARGS} --path .
 
 #################################################
 ### STAGE 4: Build Application Runtime Layer. ###
