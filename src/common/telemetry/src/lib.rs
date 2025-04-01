@@ -18,8 +18,9 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-#![feature(let_chains)]
-
+// TODO: Should be stable API after issue-58520 is resolved in the future.
+// refer to: https://github.com/wl4g/botwaf/blob/main/common/telemetry/src/tracing_sampler.rs#L59
+// #![feature(let_chains)]
 pub mod logging;
 mod macros;
 pub mod metric;
@@ -29,4 +30,4 @@ mod tracing_sampler;
 
 pub use logging::init_global_logging;
 pub use panic_hook::set_panic_hook;
-pub use ::{ common_error, tracing };
+pub use ::{common_error, tracing};

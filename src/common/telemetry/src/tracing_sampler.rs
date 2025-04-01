@@ -20,9 +20,7 @@
 
 use std::collections::HashSet;
 
-use opentelemetry::trace::{
-    Link, SamplingDecision, SamplingResult, SpanKind, TraceContextExt, TraceId, TraceState,
-};
+use opentelemetry::trace::{Link, SamplingDecision, SamplingResult, SpanKind, TraceContextExt, TraceId, TraceState};
 use opentelemetry::KeyValue;
 use opentelemetry_sdk::trace::{Sampler, ShouldSample};
 use serde::{Deserialize, Serialize};
@@ -58,12 +56,11 @@ impl TracingSampleRule {
         if protocol == self.protocol {
             if self.request_types.is_empty() {
                 Some(self.ratio)
-            } else if let Some(t) = request_type
-                && self.request_types.contains(t)
-            {
-                Some(self.ratio)
             } else {
-                None
+                match request_type {
+                    Some(t) if self.request_types.contains(t) => Some(self.ratio),
+                    _ => None,
+                }
             }
         } else {
             None
@@ -78,9 +75,7 @@ impl PartialEq for TracingSampleOptions {
 }
 impl PartialEq for TracingSampleRule {
     fn eq(&self, other: &Self) -> bool {
-        self.protocol == other.protocol
-            && self.request_types == other.request_types
-            && self.ratio == other.ratio
+        self.protocol == other.protocol && self.request_types == other.request_types && self.ratio == other.ratio
     }
 }
 

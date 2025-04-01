@@ -18,11 +18,10 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-#![feature(error_iter)]
-
+// TODO: Should be stable API after issue-58520 is resolved in the future.
+// refer to: https://github.com/wl4g/botwaf/blob/main/common/error/src/ext.rs#L57
+// #![feature(error_iter)]
 pub mod ext;
 pub mod format;
 pub mod mock;
 pub mod status_code;
-
-pub use snafu;

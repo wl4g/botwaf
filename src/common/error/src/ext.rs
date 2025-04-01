@@ -18,10 +18,10 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use crate::status_code::StatusCode;
+use snafu;
 use std::any::Any;
 use std::sync::Arc;
-
-use crate::status_code::StatusCode;
 
 /// Extension to [`Error`](std::error::Error) in std.
 pub trait ErrorExt: StackError {
@@ -33,7 +33,7 @@ pub trait ErrorExt: StackError {
     // TODO(ruihang): remove this default implementation
     /// Get the location of this error, None if the location is unavailable.
     /// Add `_opt` suffix to avoid confusing with similar method in `std::error::Error`
-    fn location_opt(&self) -> Option<crate::snafu::Location> {
+    fn location_opt(&self) -> Option<snafu::Location> {
         None
     }
 
@@ -41,7 +41,10 @@ pub trait ErrorExt: StackError {
     /// downcast to a specific implementation.
     fn as_any(&self) -> &dyn Any;
 
-    fn output_msg(&self) -> String where Self: Sized {
+    fn output_msg(&self) -> String
+    where
+        Self: Sized,
+    {
         match self.status_code() {
             StatusCode::Unknown | StatusCode::Internal => {
                 // masks internal error from end user
@@ -50,7 +53,10 @@ pub trait ErrorExt: StackError {
             _ => {
                 let error = self.last();
                 if let Some(external_error) = error.source() {
-                    let external_root = external_error.sources().last().unwrap();
+                    // TODO: Should be stable API after issue-58520 is resolved in the future.
+                    // refer to: https://github.com/GreptimeTeam/greptimedb/blob/v0.13.1/src/common/error/src/ext.rs#L43
+                    //let external_root = external_error.sources().last().unwrap(); // currently rustc-1.85 is unstable api.
+                    let external_root = external_error.source().unwrap();
 
                     if error.to_string().is_empty() {
                         format!("{external_root}")
@@ -70,7 +76,10 @@ pub trait StackError: std::error::Error {
 
     fn next(&self) -> Option<&dyn StackError>;
 
-    fn last(&self) -> &dyn StackError where Self: Sized {
+    fn last(&self) -> &dyn StackError
+    where
+        Self: Sized,
+    {
         let Some(mut result) = self.next() else {
             return self;
         };
@@ -108,9 +117,7 @@ pub struct BoxedError {
 
 impl BoxedError {
     pub fn new<E: crate::ext::ErrorExt + Send + Sync + 'static>(err: E) -> Self {
-        Self {
-            inner: Box::new(err),
-        }
+        Self { inner: Box::new(err) }
     }
 }
 
@@ -139,7 +146,7 @@ impl crate::ext::ErrorExt for BoxedError {
         self.inner.status_code()
     }
 
-    fn location_opt(&self) -> Option<crate::snafu::Location> {
+    fn location_opt(&self) -> Option<snafu::Location> {
         self.inner.location_opt()
     }
 
@@ -150,8 +157,8 @@ impl crate::ext::ErrorExt for BoxedError {
 
 // Implement ErrorCompat for this opaque error so the backtrace is also available
 // via `ErrorCompat::backtrace()`.
-impl crate::snafu::ErrorCompat for BoxedError {
-    fn backtrace(&self) -> Option<&crate::snafu::Backtrace> {
+impl snafu::ErrorCompat for BoxedError {
+    fn backtrace(&self) -> Option<&snafu::Backtrace> {
         None
     }
 }
@@ -196,7 +203,7 @@ impl crate::ext::ErrorExt for PlainError {
         self.status_code
     }
 
-    fn location_opt(&self) -> Option<crate::snafu::Location> {
+    fn location_opt(&self) -> Option<snafu::Location> {
         None
     }
 
