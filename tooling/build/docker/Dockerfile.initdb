@@ -32,6 +32,6 @@ LABEL maintainer="James Wong<jameswong1376@gmail.com>" \
   buildMirrorURL=${BUILD_MIRROR_URL}
 
 ## Note: It should be placed in the initdb dir, because the standard k8s pod volumeMount is the mount directory by default.
-COPY tooling/migrations/postgresql_init.ddl.sql /initdb/postgresql_init.ddl.sql
+COPY tooling/migrations/postgresql/init.ddl.sql /initdb/postgresql/init.ddl.sql
 
 ENTRYPOINT [ "/bin/sh", "-c" ]

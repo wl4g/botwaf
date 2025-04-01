@@ -1,4 +1,5 @@
 [toolchain]
 #channel = "stable"
-channel = "nightly" # Some depends library or module is must be nightly and such as: idb, common/error
+#channel = "nightly" # Some depends library or module is must be nightly and such as: idb, common/error
+channel = "1.85.0"
 components = ["rustfmt", "clippy", "llvm-tools"]

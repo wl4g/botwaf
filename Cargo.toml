@@ -161,3 +161,6 @@ modsecurity = "0.1.2"
 
 # Build dependencies
 criterion = "0.4"
+
+# [workspace.dev-dependencies]
+# clippy = "0.1.85" # 0.0.302

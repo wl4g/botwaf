@@ -64,20 +64,20 @@ export IMAGE_TOKEN='<YOUR_REGISTRY_TOKEN>'
 
 Usage: ./$(basename $0) [OPTIONS] [arg1] [arg2] ...
     version                                         Print APP project version.
-    gpg-verify                                      Install and Verifying GPG keys on Linux only.
+    gpg-verify                                      Installing and Verifying GPG keys on Linux only.
     build-on-host                                   Build executable binary file on Host.
     #build-deploy                                   Build and deploy to Crate central.
     build-image                                     Build components image.
-                        -s,--server                 Build image for Server.
+                        -a,--artfact                Build image for Server.
                         -d,--initdb                 Build image for Init DB.
                         -u,--ui                     Build image for UI.
-                        -A,--all                    Build image for all components.
+                        -A,--all                    Build image for All Artifacts.
     push-image                                      Push component images.
-                        -s,--server                 Push image for Server.
+                        -a,--artfact                Push image for Artifacts.
                         -d,--initdb                 Push image for Init DB.
                         -u,--ui                     Push image for UI.
-                        -A,--all                    Push image for all components.
-    build-push                                      Build with Crate and push images for all components.
+                        -A,--all                    Push image for All components.
+    build-push                                      Build with Crate and push images for All components.
     prune-image                                     Prune unused all images. (tag=none)
     deploy-docker                                   Deploy all services with docker compose mode.
                         -S,--status                 Display status for all services.
@@ -205,9 +205,10 @@ function build::docker_image() {
         logErr "The arg 1 DOCKER_FILE is missing."; exit 1
     fi
     log "Docker building to wl4g/${image_name}:${image_tag} with ${BASE_DIR}, ${mirror_url} ..."
-    docker build \
+    docker buildx build \
         -t wl4g/${image_name}:${image_tag} \
         -f ${BASE_DIR}/tooling/build/docker/${dockerfile} \
+        --platform=amd64 \
         --build-arg BUILD_ARGS="--features tokio-console,profiling" \
         --build-arg BUILD_REPO_URL=$(git remote -v | head -1 | awk -F ' ' '{print $2}') \
         --build-arg BUILD_COMMIT_ID=$(git log | head -1 | awk -F ' ' '{print $2}' | cut -c 1-12) \
@@ -323,7 +324,7 @@ case $1 in
     ;;
   build-image)
     case $2 in
-        -s|--server)
+        -a|--artfact)
             build::docker_image "botwaf" "Dockerfile"
             ;;
         -d|--initdb)
@@ -339,7 +340,7 @@ case $1 in
     ;;
   push-image)
     case $2 in
-        -s|--server)
+        -a|--artfact)
             build::push_image "botwaf"
             ;;
         -d|--initdb)
