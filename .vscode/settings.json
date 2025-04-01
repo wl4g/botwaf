@@ -4,6 +4,6 @@
         "editor.formatOnSave": true
     },
     "rust-analyzer.server.extraEnv": {
-        "SWAGGER_UI_DOWNLOAD_URL": "file:${workspaceFolder}/etc/swagger-ui-5.17.14.zip"
+        "SWAGGER_UI_DOWNLOAD_URL": "file:${workspaceFolder}/tooling/build/deps/swagger-ui-5.17.14.zip"
     }
 }

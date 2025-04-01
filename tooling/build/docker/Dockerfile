@@ -57,10 +57,12 @@ WORKDIR /usr/src/app
 #################################################
 FROM base AS deps
 
+ARG PROJECT_NAME=botwaf
+
 # Copy only files needed for dependency resolution. (Excluded: 'rust-toolchain.toml' due to containing dev components.)
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
 COPY benchmarks ./benchmarks
+COPY src ./src
+COPY Cargo.toml Cargo.lock ./
 
 # Setup dependency caching structure
 RUN find src -type f -not -name "Cargo.toml" -delete && \
@@ -74,8 +76,7 @@ RUN find src -type f -not -name "Cargo.toml" -delete && \
     ls -R /usr/src/app
 
 # Build dependencies only
-RUN cargo fetch && \
-    cargo build --release && \
+RUN cargo build --release && \
     find . -name "*.rs" -delete
 
 ################################################
@@ -96,11 +97,10 @@ COPY etc ./etc
 COPY src ./src
 COPY static ./static
 COPY tooling ./tooling
-COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY Cargo.toml Cargo.lock ./
 
 # Check toolchain and build the application
-RUN rustup show && \
-    cargo install ${BUILD_ARGS} --path .
+RUN cargo install ${BUILD_ARGS} --path .
 
 #################################################
 ### STAGE 4: Runtime Image                    ###
