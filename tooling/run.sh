@@ -67,15 +67,15 @@ Usage: ./$(basename $0) [OPTIONS] [arg1] [arg2] ...
     gpg-verify                                      Installing and Verifying GPG keys on Linux only.
     build-on-host                                   Build executable binary file on Host.
     #build-deploy                                   Build and deploy to Crate central.
-    build-image                                     Build components image.
-                        -a,--artfact                Build image for Server.
+    build-image                                     Build component images.
+                        -b,--backend                Build image for Backend component.
+                        -f,--frontend               Build image for Frontend component.
                         -d,--initdb                 Build image for Init DB.
-                        -u,--ui                     Build image for UI.
                         -A,--all                    Build image for All Artifacts.
     push-image                                      Push component images.
-                        -a,--artfact                Push image for Artifacts.
+                        -b,--backend                Push image for Backend component.
+                        -f,--frontend               Push image for Frontend component.
                         -d,--initdb                 Push image for Init DB.
-                        -u,--ui                     Push image for UI.
                         -A,--all                    Push image for All components.
     build-push                                      Build with Crate and push images for All components.
     prune-image                                     Prune unused all images. (tag=none)
@@ -324,7 +324,7 @@ case $1 in
     ;;
   build-image)
     case $2 in
-        -a|--artfact)
+        -b|--backend)
             build::docker_image "botwaf" "Dockerfile"
             ;;
         -d|--initdb)
@@ -340,7 +340,7 @@ case $1 in
     ;;
   push-image)
     case $2 in
-        -a|--artfact)
+        -b|--backend)
             build::push_image "botwaf"
             ;;
         -d|--initdb)
