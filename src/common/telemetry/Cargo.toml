@@ -20,9 +20,7 @@ tracing-appender = "0.2"
 tracing-log = "0.1"
 tracing-opentelemetry = "0.22.0"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-opentelemetry = { version = "0.21.0", default-features = false, features = [
-    "trace",
-] }
+opentelemetry = { version = "0.21.0", default-features = false, features = ["trace"] }
 opentelemetry_sdk = { version = "0.21.0", features = ["rt-tokio"] }
 opentelemetry-otlp = { version = "0.14.0", features = ["tokio"] }
 opentelemetry-semantic-conventions = "0.13.0"

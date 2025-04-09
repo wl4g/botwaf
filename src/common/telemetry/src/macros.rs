@@ -259,14 +259,21 @@ mod tests {
             // if we write testing logs in it, actions would fail due to disk out of space error.
             let dir = env::var("UNITTEST_LOG_DIR").unwrap_or_else(|_| "/tmp/__unittest_logs".to_string());
 
-            let level = env::var("UNITTEST_LOG_LEVEL")
-                .unwrap_or_else(|_| "debug,hyper=warn,tower=warn,datafusion=warn,reqwest=warn,sqlparser=warn,h2=info,opendal=info".to_string());
+            let level = env::var("UNITTEST_LOG_LEVEL").unwrap_or_else(|_| {
+                "debug,hyper=warn,tower=warn,datafusion=warn,reqwest=warn,sqlparser=warn,h2=info,opendal=info"
+                    .to_string()
+            });
             let opts = LoggingOptions {
                 dir: dir.clone(),
                 level: Some(level),
                 ..Default::default()
             };
-            *g = Some(logging::init_global_logging("unittest", &opts, logging::TracingOptions::default(), None));
+            *g = Some(logging::init_global_logging(
+                "unittest",
+                &opts,
+                logging::TracingOptions::default(),
+                None,
+            ));
 
             crate::info!("logs dir = {}", dir);
         });

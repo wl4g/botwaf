@@ -89,7 +89,6 @@ tracing-attributes.workspace = true
 opentelemetry = { workspace = true }
 opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
 opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
-opentelemetry-http = { workspace = true }
 zip = "=2.3.0"
 
 [build-dependencies]
