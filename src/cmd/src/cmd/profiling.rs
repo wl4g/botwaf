@@ -15,6 +15,7 @@
 use axum::{routing, Router};
 
 #[cfg(feature = "mem-prof")]
+// #[allow(dead_code)]
 pub mod mem_prof_router {
     use axum::http::StatusCode;
     use axum::response::IntoResponse;

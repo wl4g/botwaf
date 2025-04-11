@@ -31,6 +31,7 @@ edition = "2021"
 clippy.print_stdout = "warn"
 clippy.print_stderr = "warn"
 clippy.implicit_clone = "warn"
+# clippy.dead_code = "allow"
 rust.unknown_lints = "deny"
 
 [workspace.dependencies]
