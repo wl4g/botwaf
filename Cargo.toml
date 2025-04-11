@@ -5,6 +5,7 @@ members = [
     "src/common/macro",
     "src/common/makestruct",
     "src/common/mem-prof",
+    "src/common/pprof",
     "src/common/telemetry",
     "src/cmd",
     "src/server",
@@ -39,6 +40,7 @@ common-error = { path = "src/common/error" }
 common-macro = { path = "src/common/macro" }
 common-makestruct = { path = "src/common/makestruct" }
 common-mem-prof = { path = "src/common/mem-prof" }
+common-pprof = { path = "src/common/pprof" }
 common-telemetry = { path = "src/common/telemetry" }
 botwaf-cmd = { path = "src/cmd" }
 botwaf-server = { path = "src/server" }
@@ -91,7 +93,7 @@ log = "0.4.22"
 prometheus = "0.14.0"
 axum-prometheus = "0.8.0"
 
-# Tracing libs
+# Tracing libs.
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["json", "env-filter"] }
 tracing-opentelemetry = "0.24.0"
@@ -101,14 +103,18 @@ opentelemetry = "0.23.0"
 opentelemetry_sdk = "0.23.0"
 opentelemetry-otlp = "0.16.0"
 
+# APM libs.
+prost = "0.13"
+
 # Async core libs
 tokio = { version = "1.43.0", features = ["full", "signal"] }
 tokio-cron-scheduler = { version = "0.13.0" }
 async-trait = "0.1.88"
 futures = "0.3"
 
-# Web HTTP libs
+# Web HTTP libs.
 axum = { version = "0.8.3", features = ["multipart"] }
+axum-macros = "0.5"
 hyper = "1.6.0"
 tower = "0.5.2"
 tower-http = "0.5.2"
@@ -121,7 +127,6 @@ reqwest = "0.12.12"
 # Database libs
 mongodb = "3.0.1"
 sqlx = { version = "0.8.3", features = ["sqlite", "postgres"] }
-#idb = "0.6.4"
 pgvector = { version = "0.4", features = ["postgres"] }
 
 # Swagger/OpenAPI libs

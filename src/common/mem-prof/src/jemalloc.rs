@@ -12,18 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod error;
-
+use crate::error::Result;
+use crate::error::{
+    BuildTempPathSnafu, DumpProfileDataSnafu, OpenTempFileSnafu, ProfilingNotEnabledSnafu, ReadOptProfSnafu,
+};
+use snafu::{ensure, ResultExt};
 use std::{
     ffi::{c_char, CString},
     path::PathBuf,
 };
-
-use error::{BuildTempPathSnafu, DumpProfileDataSnafu, OpenTempFileSnafu, ProfilingNotEnabledSnafu, ReadOptProfSnafu};
-use snafu::{ensure, ResultExt};
 use tokio::io::AsyncReadExt;
-
-use crate::error::Result;
 
 const PROF_DUMP: &[u8] = b"prof.dump\0";
 const OPT_PROF: &[u8] = b"opt.prof\0";

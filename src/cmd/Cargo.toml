@@ -9,6 +9,9 @@ workspace = true
 
 [dependencies]
 # Other modules dependencies.
+common-mem-prof.workspace = true
+common-pprof.workspace = true
+common-telemetry.workspace = true
 botwaf-server.workspace = true
 botwaf-updater.workspace = true
 botwaf-verifier.workspace = true
@@ -17,11 +20,13 @@ botwaf-types.workspace = true
 botwaf-utils.workspace = true
 
 # Thirdparty dependencies.
+mimalloc.workspace = true
+axum-macros.workspace = true
 clap.workspace = true
 anyhow.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
-mimalloc.workspace = true
 tokio.workspace = true
 axum.workspace = true
 axum-prometheus.workspace = true
@@ -31,6 +36,7 @@ tower-cookies.workspace = true
 lazy_static.workspace = true
 log.workspace = true
 tracing.workspace = true
+snafu.workspace = true
 
 [[bin]]
 name = "botwaf"

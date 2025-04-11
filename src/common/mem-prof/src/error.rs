@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::any::Any;
-
 use common_error::{
     ext::{BoxedError, ErrorExt},
     status_code::StatusCode,
 };
 use common_macro::stack_trace_debug;
-use snafu::Snafu;
+use snafu::{Location, Snafu};
+use std::{any::Any, path::PathBuf};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -32,6 +31,36 @@ pub enum Error {
 
     #[snafu(display("Memory profiling is not supported"))]
     ProfilingNotSupported,
+
+    #[snafu(display("Failed to read OPT_PROF"))]
+    ReadOptProf {
+        #[snafu(source)]
+        error: tikv_jemalloc_ctl::Error,
+    },
+
+    #[snafu(display("Memory profiling is not enabled"))]
+    ProfilingNotEnabled,
+
+    #[snafu(display("Failed to build temp file from given path: {:?}", path))]
+    BuildTempPath {
+        path: PathBuf,
+        #[snafu(implicit)]
+        location: Location,
+    },
+
+    #[snafu(display("Failed to open temp file: {}", path))]
+    OpenTempFile {
+        path: String,
+        #[snafu(source)]
+        error: std::io::Error,
+    },
+
+    #[snafu(display("Failed to dump profiling data to temp file: {:?}", path))]
+    DumpProfileData {
+        path: PathBuf,
+        #[snafu(source)]
+        error: tikv_jemalloc_ctl::Error,
+    },
 }
 
 impl ErrorExt for Error {
@@ -39,10 +68,23 @@ impl ErrorExt for Error {
         match self {
             Error::Internal { source } => source.status_code(),
             Error::ProfilingNotSupported => StatusCode::Unsupported,
+            Error::ReadOptProf { .. } => StatusCode::Internal,
+            Error::ProfilingNotEnabled => StatusCode::InvalidArguments,
+            Error::BuildTempPath { .. } => StatusCode::Internal,
+            Error::OpenTempFile { .. } => StatusCode::StorageUnavailable,
+            Error::DumpProfileData { .. } => StatusCode::StorageUnavailable,
         }
     }
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+impl Error {
+    pub fn internal_from(err: Self) -> Self {
+        Self::Internal {
+            source: BoxedError::new(err),
+        }
     }
 }
