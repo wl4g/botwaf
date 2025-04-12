@@ -136,7 +136,7 @@ pub mod pprof_router {
     }
 }
 
-pub async fn router() -> axum::Router {
+pub fn router() -> axum::Router {
     // Handlers for debug, we don't expect a timeout.
     Router::new().nest(
         "/debug",

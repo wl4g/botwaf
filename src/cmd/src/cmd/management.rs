@@ -25,6 +25,8 @@ use axum_prometheus::PrometheusMetricLayer;
 use botwaf_server::{config::config::AppConfig, mgmt};
 use tokio::{sync::oneshot, task::JoinHandle};
 
+use crate::cmd::profiling;
+
 pub struct ManagementServer {}
 
 impl ManagementServer {
@@ -34,7 +36,8 @@ impl ManagementServer {
 
         let app: Router = Router::new()
             .route("/metrics", get(mgmt::apm::metrics::handle_metrics))
-            .layer(prometheus_layer);
+            .layer(prometheus_layer)
+            .merge(profiling::router());
 
         let bind_addr = config.mgmt.get_bind_addr();
         tracing::info!("Starting Management server on {}", bind_addr);
