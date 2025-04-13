@@ -18,18 +18,15 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::sync::Arc;
-
-use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::layer::SubscriberExt;
-
 use crate::config::config::AppConfig;
 use crate::mgmt::apm::otel::create_otel_tracer;
+use std::sync::Arc;
+use tracing_opentelemetry::OpenTelemetryLayer;
+use tracing_subscriber::layer::SubscriberExt;
 
 pub mod logging;
 pub mod metrics;
 pub mod otel;
-pub mod profiling;
 
 pub async fn init_components(config: &Arc<AppConfig>) {
     // Setup logging+tracing layers.
@@ -79,5 +76,5 @@ pub async fn init_components(config: &Arc<AppConfig>) {
     metrics::init_metrics(config).await;
 
     // Setup profiling.
-    profiling::init_profiling(config).await;
+    // common_telemetry::pyroscope_agent::init_profiling(config).await;
 }

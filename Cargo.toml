@@ -70,6 +70,8 @@ lazy_static = "1.4.0"
 mac_address = "1.1.7"
 url = "2.5.4"
 eyre = "0.6.12"
+humantime = "2.1"
+humantime-serde = "1.1"
 
 # Config libs
 config = "0.14.0"

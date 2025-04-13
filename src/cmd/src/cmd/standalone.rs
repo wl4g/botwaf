@@ -123,15 +123,15 @@ impl StandaloneServer {
                 "http", config.mgmt.host, config.mgmt.port
             );
             if config.mgmt.tokio_console.enabled {
-                #[cfg(feature = "tokio-console")]
+                #[cfg(feature = "profiling-tokio-console")]
                 let server_addr = &config.mgmt.tokio_console.server_bind;
-                #[cfg(feature = "tokio-console")]
+                #[cfg(feature = "profiling-tokio-console")]
                 eprintln!("   TokioConsole serve listen on: \"{}://{}\"", "http", server_addr);
             }
             if config.mgmt.pyroscope.enabled {
-                #[cfg(feature = "profiling")]
+                #[cfg(feature = "profiling-pyroscope")]
                 let server_url = &config.mgmt.pyroscope.server_url;
-                #[cfg(feature = "profiling")]
+                #[cfg(feature = "profiling-pyroscope")]
                 eprintln!("     Pyroscope agent connect to: \"{}\"", server_url);
             }
             if config.mgmt.otel.enabled {

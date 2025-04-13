@@ -25,6 +25,8 @@ pub mod logging;
 mod macros;
 pub mod metric;
 mod panic_hook;
+#[cfg(feature = "profiling-pyroscope")]
+pub mod pyroscope_agent;
 pub mod tracing_context;
 mod tracing_sampler;
 

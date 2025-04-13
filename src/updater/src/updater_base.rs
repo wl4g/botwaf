@@ -22,6 +22,7 @@ use crate::updater_simple_llm::SimpleLLMUpdater;
 use anyhow::Error;
 use async_trait::async_trait;
 use botwaf_server::config::config;
+use common_telemetry::info;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -54,11 +55,11 @@ impl BotwafUpdaterManager {
     }
 
     pub async fn init() {
-        tracing::info!("Register All Botwaf updaters ...");
+        info!("Register All Botwaf updaters ...");
 
         for config in &config::get_config().services.updaters {
             if !config.enabled {
-                tracing::info!("Skipping implementation updater: {}", config.name);
+                info!("Skipping implementation updater: {}", config.name);
                 continue;
             }
             // TODO: Full use similar java spi provider mechanism.
@@ -69,7 +70,7 @@ impl BotwafUpdaterManager {
                     .register(config.kind.to_owned(), SimpleLLMUpdater::new(config).await)
                 {
                     Ok(registered) => {
-                        tracing::info!("Initializing Botwaf Updater ...");
+                        info!("Initializing Botwaf Updater ...");
                         let _ = registered.init().await;
                     }
                     Err(e) => panic!("Failed to register Botwaf Updater: {}", e),

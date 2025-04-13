@@ -18,35 +18,37 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::sync::Arc;
+use crate::info;
 
-use crate::config::config::AppConfig;
-#[cfg(feature = "profiling")]
-use crate::{config::config::GIT_VERSION, util::inets};
+#[derive(Debug, Clone)]
+pub struct PyroscopeAgentOptions {
+    pub enabled: bool,
+    pub service_name: String,
+    pub server_url: String,
+    pub auth_token: Option<String>,
+    pub tags: Option<Vec<(String, String)>>,
+    pub sample_rate: f32,
+}
 
-#[allow(unused)]
-pub async fn init_profiling(config: &Arc<AppConfig>) {
-    #[cfg(feature = "profiling")]
-    let agent = if config.mgmt.enabled && config.mgmt.pyroscope.enabled {
+pub async fn init_profiling(options: &PyroscopeAgentOptions) {
+    let agent = if options.enabled && options.enabled {
         let mut tags = Vec::new();
         tags.push(("role", "primary"));
-        let local_ip = &inets::get_local_non_loopback_ip_str();
-        tags.push(("instance", local_ip));
-        tags.push(("version", GIT_VERSION));
+        //tags.push(("instance", &botwaf_utils::inets::get_local_non_loopback_ip_str()));
         // Merge tags with configuration.
-        if let Some(ctags) = &config.mgmt.pyroscope.tags {
+        if let Some(ctags) = &options.tags {
             for (key, value) in ctags {
                 tags.push((key.as_str(), value.as_str()));
             }
         }
         // Create pyroscope agent.
         // https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/rust/
-        let mut builder = pyroscope::PyroscopeAgent::builder(&config.mgmt.pyroscope.server_url, &config.service_name)
+        let mut builder = pyroscope::PyroscopeAgent::builder(&options.server_url, &options.service_name)
             .tags(tags)
             .backend(pyroscope_pprofrs::pprof_backend(
                 pyroscope_pprofrs::PprofConfig::new().sample_rate(100),
             ));
-        builder = match &config.mgmt.pyroscope.auth_token {
+        builder = match &options.auth_token {
             Some(token) => builder.auth_token(token),
             None => builder,
         };
@@ -54,9 +56,8 @@ pub async fn init_profiling(config: &Arc<AppConfig>) {
     } else {
         None
     };
-    #[cfg(feature = "profiling")]
     if agent.is_some() {
-        tracing::info!("Pyroscope agent profiling starting ...");
+        info!("Pyroscope agent profiling starting ...");
         agent.unwrap().start().expect("Failed to start pyroscope agent");
     }
 }

@@ -22,12 +22,12 @@ use super::verifier_simple_execution::SimpleExecuteBasedVerifier;
 use anyhow::Error;
 use async_trait::async_trait;
 use botwaf_server::config::config;
+use common_telemetry::info;
 use lazy_static::lazy_static;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
-use tokio::sync::Mutex;
 
 #[async_trait]
 pub trait IBotwafVerifier: Send + Sync {
@@ -54,11 +54,11 @@ impl BotwafVerifierManager {
     }
 
     pub async fn init() {
-        tracing::info!("Register All Botwaf updaters ...");
+        info!("Register All Botwaf updaters ...");
 
         for config in &config::get_config().services.verifiers {
             if !config.enabled {
-                tracing::info!("Skipping implementation updater: {}", config.name);
+                info!("Skipping implementation updater: {}", config.name);
                 continue;
             }
             // TODO: Full use similar java spi provider mechanism.
@@ -69,7 +69,7 @@ impl BotwafVerifierManager {
                     .register(config.kind.to_owned(), SimpleExecuteBasedVerifier::new(config).await)
                 {
                     Ok(registered) => {
-                        tracing::info!("Initializing Botwaf Verifier ...");
+                        info!("Initializing Botwaf Verifier ...");
                         let _ = registered.init().await;
                     }
                     Err(e) => panic!("Failed to register Botwaf Verifier: {}", e),

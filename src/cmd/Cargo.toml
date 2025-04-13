@@ -9,8 +9,8 @@ workspace = true
 
 [dependencies]
 # Other modules dependencies.
-common-mem-prof.workspace = true
-common-pprof.workspace = true
+common-mem-prof = { workspace = true, optional = true }
+common-pprof = { workspace = true, optional = true }
 common-telemetry.workspace = true
 botwaf-server.workspace = true
 botwaf-updater.workspace = true
@@ -44,3 +44,10 @@ path = "src/bin/botwaf.rs"
 
 [build-dependencies]
 chrono.workspace = true
+
+[features]
+# default = ["servers/pprof", "servers/mem-prof"]
+profiling-tokio-console = ["common-telemetry/profiling-tokio-console"]
+profiling-pyroscope = ["common-telemetry/profiling-pyroscope"]
+profiling-mem-prof = ["common-mem-prof"]
+profiling-pprof = ["common-pprof"]

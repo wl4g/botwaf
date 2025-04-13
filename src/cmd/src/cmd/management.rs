@@ -23,6 +23,7 @@ use std::sync::Arc;
 use axum::{routing::get, Router};
 use axum_prometheus::PrometheusMetricLayer;
 use botwaf_server::{config::config::AppConfig, mgmt};
+use common_telemetry::info;
 use tokio::{sync::oneshot, task::JoinHandle};
 
 use crate::cmd::profiling;
@@ -40,7 +41,7 @@ impl ManagementServer {
             .merge(profiling::router());
 
         let bind_addr = config.mgmt.get_bind_addr();
-        tracing::info!("Starting Management server on {}", bind_addr);
+        info!("Starting Management server on {}", bind_addr);
 
         tokio::spawn(async move {
             // When started call to signal sender.

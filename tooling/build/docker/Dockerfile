@@ -100,7 +100,7 @@ COPY tooling ./tooling
 COPY Cargo.toml Cargo.lock ./
 
 # Check toolchain and build the application
-RUN cargo install ${BUILD_ARGS} --path .
+RUN cargo install ${BUILD_ARGS} --path src/cmd
 
 #################################################
 ### STAGE 4: Runtime Image                    ###

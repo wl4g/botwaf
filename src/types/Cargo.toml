@@ -9,8 +9,9 @@ workspace = true
 
 [dependencies]
 # Other modules dependencies.
-botwaf-utils.workspace = true
 common-makestruct.workspace = true
+botwaf-utils.workspace = true
+
 # Thirdparty dependencies.
 axum.workspace = true
 serde.workspace = true

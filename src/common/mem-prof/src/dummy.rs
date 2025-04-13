@@ -12,13 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod error;
-
-#[cfg(not(windows))]
-mod unix_jemalloc;
-
-#[cfg(not(windows))]
-pub use unix_jemalloc::dump_profile;
-
-#[cfg(windows)]
-pub mod dummy;
+pub async fn dump_profile() -> error::Result<Vec<u8>> {
+    error::ProfilingNotSupportedSnafu.fail()
+}

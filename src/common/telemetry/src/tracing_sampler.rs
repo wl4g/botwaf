@@ -18,12 +18,11 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::collections::HashSet;
-
 use opentelemetry::trace::{Link, SamplingDecision, SamplingResult, SpanKind, TraceContextExt, TraceId, TraceState};
 use opentelemetry::KeyValue;
 use opentelemetry_sdk::trace::{Sampler, ShouldSample};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]

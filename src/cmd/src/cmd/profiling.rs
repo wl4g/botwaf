@@ -14,7 +14,7 @@
 
 use axum::{routing, Router};
 
-#[cfg(feature = "mem-prof")]
+#[cfg(feature = "profiling-mem-prof")]
 // #[allow(dead_code)]
 pub mod mem_prof_router {
     use axum::http::StatusCode;
@@ -47,7 +47,7 @@ pub mod mem_prof_router {
     }
 }
 
-#[cfg(not(feature = "mem-prof"))]
+#[cfg(not(feature = "profiling-mem-prof"))]
 pub mod mem_prof_router {
     use axum::{http::StatusCode, response::IntoResponse};
     #[axum_macros::debug_handler]
@@ -60,13 +60,13 @@ pub mod mem_prof_router {
     }
 }
 
-#[cfg(feature = "pprof")]
+#[cfg(feature = "profiling-pprof")]
 pub mod pprof_router {
     use axum::extract::Query;
     use axum::http::StatusCode;
     use axum::response::IntoResponse;
     // use common_pprof::error::{DumpPprofSnafu, Result};
-    use common_pprof::Profiling;
+    use common_pprof::CPUProfiling;
     use common_telemetry::info;
     use serde::{Deserialize, Serialize};
     // use snafu::ResultExt;
@@ -127,7 +127,7 @@ pub mod pprof_router {
     }
 }
 
-#[cfg(not(feature = "pprof"))]
+#[cfg(not(feature = "profiling-pprof"))]
 pub mod pprof_router {
     use axum::{http::StatusCode, response::IntoResponse};
     #[axum_macros::debug_handler]

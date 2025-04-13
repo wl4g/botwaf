@@ -36,7 +36,7 @@ pub async fn dump_profile() -> Result<Vec<u8>> {
     })?;
 
     let mut path_buf = PathBuf::from(tmp_path.path());
-    path_buf.push("myapp.hprof");
+    path_buf.push("botwaf.hprof");
 
     let path = path_buf
         .to_str()

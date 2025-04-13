@@ -21,6 +21,7 @@
 use super::verifier_base::IBotwafVerifier;
 use async_trait::async_trait;
 use botwaf_server::config::config::VerifierProperties;
+use common_telemetry::info;
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
@@ -41,8 +42,8 @@ impl SimpleExecuteBasedVerifier {
     }
 
     pub(super) async fn verify(&self) {
-        tracing::info!("Simple Execute verifing ...");
-        tracing::info!("TODO");
+        info!("Simple Execute verifing ...");
+        info!("TODO");
     }
 }
 
@@ -65,11 +66,11 @@ impl IBotwafVerifier for SimpleExecuteBasedVerifier {
             }
         };
 
-        tracing::info!("Starting Verifier handler with cron '{}'", cron);
+        info!("Starting Verifier handler with cron '{}'", cron);
         let job = Job::new_async(cron, move |_uuid, _lock| {
             let that = this.clone();
             Box::pin(async move {
-                tracing::info!("{:?} Hi I ran", chrono::Utc::now());
+                info!("{:?} Hi I ran", chrono::Utc::now());
                 that.verify().await;
             })
         })
@@ -78,7 +79,7 @@ impl IBotwafVerifier for SimpleExecuteBasedVerifier {
         self.scheduler.add(job).await.unwrap();
         self.scheduler.start().await.unwrap();
 
-        tracing::info!("Started Simple Execute verifier handler.");
+        info!("Started Simple Execute verifier handler.");
         // Notice: It's will keep the program running
         // tokio::signal::ctrl_c().await.unwrap();
     }

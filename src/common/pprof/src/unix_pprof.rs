@@ -12,27 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::time::Duration;
-
+use crate::error::{PprofSnafu, Result};
 use pprof::protos::Message;
 use snafu::ResultExt;
-
-use crate::error::{PprofSnafu, Result};
+use std::time::Duration;
 
 /// CPU profiler utility.
 // Inspired by https://github.com/datafuselabs/databend/blob/67f445e83cd4eceda98f6c1c114858929d564029/src/common/base/src/base/profiling.rs
 #[derive(Debug)]
-pub struct Profiling {
+pub struct CPUProfiling {
     /// Sample duration.
     duration: Duration,
     /// Sample frequency.
     frequency: i32,
 }
 
-impl Profiling {
+impl CPUProfiling {
     /// Creates a new profiler.
-    pub fn new(duration: Duration, frequency: i32) -> Profiling {
-        Profiling { duration, frequency }
+    pub fn new(duration: Duration, frequency: i32) -> CPUProfiling {
+        CPUProfiling { duration, frequency }
     }
 
     /// Profiles and returns a generated pprof report.
