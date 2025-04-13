@@ -652,6 +652,7 @@ dependencies = [
  "botwaf-verifier",
  "chrono",
  "clap 4.5.34",
+ "common-error",
  "common-mem-prof",
  "common-pprof",
  "common-telemetry",

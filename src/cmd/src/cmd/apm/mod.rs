@@ -18,18 +18,24 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-// TODO: Should be stable API after issue-58520 is resolved in the future.
-// refer to: https://github.com/wl4g/botwaf/blob/main/common/telemetry/src/tracing_sampler.rs#L59
-// #![feature(let_chains)]
-pub mod logging;
-mod macros;
-pub mod metric;
-mod panic_hook;
-#[cfg(feature = "profiling-pyroscope")]
-pub mod pyroscope_agent;
-pub mod tracing_context;
-mod tracing_sampler;
+pub mod dyn_log;
+pub mod profiling;
 
-pub use logging::{init_global_logging, RELOAD_HANDLE};
-pub use panic_hook::set_panic_hook;
-pub use {common_error, tracing, tracing_subscriber};
+use axum::{routing, Router};
+use profiling::{mem_prof_router, pprof_router};
+
+pub fn router() -> axum::Router {
+    // Handlers for debug, we don't expect a timeout.
+    Router::new().nest(
+        "/debug",
+        Router::new()
+            // handler for changing log level dynamically.
+            .route("/log_level", routing::post(dyn_log::dyn_log_handler))
+            .nest(
+                "/prof",
+                Router::new()
+                    .route("/cpu", routing::post(pprof_router::pprof_handler))
+                    .route("/mem", routing::post(mem_prof_router::mem_prof_handler)),
+            ),
+    )
+}

@@ -49,7 +49,8 @@ pub async fn init_components(config: &Arc<AppConfig>) {
         // Notice: Use optional dependencies to avoid slow auto compilation during debugg, because if rely
         // on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
         // will invalidate the compile-time cache.
-        #[cfg(feature = "tokio-console")]
+        // TODO: removed this feature in the future instead of using a common-telemetry/logging.rs
+        #[cfg(feature = "profiling-tokio-console")]
         let server_addr = config
             .mgmt
             .tokio_console
@@ -57,7 +58,8 @@ pub async fn init_components(config: &Arc<AppConfig>) {
             .as_str()
             .parse::<std::net::SocketAddr>()
             .expect("Failed to parse server address");
-        #[cfg(feature = "tokio-console")]
+        // TODO: removed this feature in the future instead of using a common-telemetry/logging.rs
+        #[cfg(feature = "profiling-tokio-console")]
         let subscriber = subscriber.with(
             console_subscriber::ConsoleLayer::builder()
                 .with_default_env()

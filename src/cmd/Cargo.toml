@@ -9,6 +9,7 @@ workspace = true
 
 [dependencies]
 # Other modules dependencies.
+common-error = { workspace = true }
 common-mem-prof = { workspace = true, optional = true }
 common-pprof = { workspace = true, optional = true }
 common-telemetry.workspace = true

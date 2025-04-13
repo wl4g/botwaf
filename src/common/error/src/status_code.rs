@@ -19,7 +19,6 @@
 // This includes modifications and derived works.
 
 use std::fmt;
-
 use strum::{AsRefStr, EnumIter, EnumString, FromRepr};
 
 /// Common status code for public API.
