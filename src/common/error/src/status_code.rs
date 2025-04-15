@@ -54,22 +54,6 @@ pub enum StatusCode {
     EngineExecuteQuery = 3001,
     // ====== End of query related status code =========
 
-    // ====== Begin of catalog related status code =====
-    /// Table already exists.
-    TableAlreadyExists = 4000,
-    TableNotFound = 4001,
-    TableColumnNotFound = 4002,
-    TableColumnExists = 4003,
-    DatabaseNotFound = 4004,
-    RegionNotFound = 4005,
-    RegionAlreadyExists = 4006,
-    RegionReadonly = 4007,
-    RegionNotReady = 4008,
-    // If mutually exclusive operations are reached at the same time,
-    // only one can be executed, another one will get region busy.
-    RegionBusy = 4009,
-    // ====== End of catalog related status code =======
-
     // ====== Begin of storage related status code =====
     /// Storage is temporarily unable to handle the request
     StorageUnavailable = 5000,
@@ -112,11 +96,7 @@ impl StatusCode {
     /// Returns `true` if the error with this code is retryable.
     pub fn is_retryable(&self) -> bool {
         match self {
-            StatusCode::StorageUnavailable
-            | StatusCode::RuntimeResourcesExhausted
-            | StatusCode::Internal
-            | StatusCode::RegionNotReady
-            | StatusCode::RegionBusy => true,
+            StatusCode::StorageUnavailable | StatusCode::RuntimeResourcesExhausted | StatusCode::Internal => false,
 
             StatusCode::Success
             | StatusCode::Unknown
@@ -127,14 +107,6 @@ impl StatusCode {
             | StatusCode::InvalidSyntax
             | StatusCode::PlanQuery
             | StatusCode::EngineExecuteQuery
-            | StatusCode::TableAlreadyExists
-            | StatusCode::TableNotFound
-            | StatusCode::RegionNotFound
-            | StatusCode::RegionAlreadyExists
-            | StatusCode::RegionReadonly
-            | StatusCode::TableColumnNotFound
-            | StatusCode::TableColumnExists
-            | StatusCode::DatabaseNotFound
             | StatusCode::RateLimited
             | StatusCode::UserNotFound
             | StatusCode::UnsupportedPasswordType
@@ -163,16 +135,6 @@ impl StatusCode {
             | StatusCode::Unsupported
             | StatusCode::InvalidArguments
             | StatusCode::InvalidSyntax
-            | StatusCode::TableAlreadyExists
-            | StatusCode::TableNotFound
-            | StatusCode::RegionNotFound
-            | StatusCode::RegionNotReady
-            | StatusCode::RegionBusy
-            | StatusCode::RegionAlreadyExists
-            | StatusCode::RegionReadonly
-            | StatusCode::TableColumnNotFound
-            | StatusCode::TableColumnExists
-            | StatusCode::DatabaseNotFound
             | StatusCode::RateLimited
             | StatusCode::UserNotFound
             | StatusCode::UnsupportedPasswordType
@@ -211,7 +173,6 @@ mod tests {
     #[test]
     fn test_display_status_code() {
         assert_status_code_display(StatusCode::Unknown, "Unknown");
-        assert_status_code_display(StatusCode::TableAlreadyExists, "TableAlreadyExists");
     }
 
     #[test]

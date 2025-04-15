@@ -18,7 +18,7 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use crate::cmd::apm;
+use crate::cmd::{self, apm};
 use axum::{routing::get, Router};
 use axum_prometheus::PrometheusMetricLayer;
 use botwaf_server::{config::config::AppConfig, mgmt};
@@ -34,9 +34,11 @@ impl ManagementServer {
         let (prometheus_layer, _) = PrometheusMetricLayer::pair();
 
         let app: Router = Router::new()
-            .route("/metrics", get(mgmt::apm::metrics::handle_metrics))
+            // TODO: There are merge??
+            .route("/metrics1", get(mgmt::apm::metrics::handle_metrics))
+            .route("/metrics2", get(cmd::apm::handle_metrics))
             .layer(prometheus_layer)
-            .merge(apm::router());
+            .merge(apm::handle_debug());
 
         let bind_addr = config.mgmt.get_bind_addr();
         info!("Starting Management server on {}", bind_addr);

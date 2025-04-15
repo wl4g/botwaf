@@ -9,6 +9,7 @@ workspace = true
 
 [dependencies]
 # Other modules dependencies.
+common-macro = { workspace = true }
 common-error = { workspace = true }
 common-mem-prof = { workspace = true, optional = true }
 common-pprof = { workspace = true, optional = true }
@@ -38,8 +39,10 @@ tower-http.workspace = true
 tower-cookies.workspace = true
 lazy_static.workspace = true
 log.workspace = true
-tracing.workspace = true
 snafu.workspace = true
+tracing.workspace = true
+prometheus.workspace = true
+once_cell.workspace = true
 
 [[bin]]
 name = "botwaf"
@@ -49,6 +52,7 @@ path = "src/bin/botwaf.rs"
 chrono.workspace = true
 
 [target.'cfg(not(windows))'.dependencies]
+tikv-jemalloc-ctl = { version = "0.6.0", features = ["use_std", "stats"] }
 tikv-jemallocator = "0.6.0"
 
 [features]

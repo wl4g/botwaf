@@ -250,7 +250,8 @@ Helpful Answer:
             .with_score_threshold(0.3 as f32); // TODO: score threshold
 
         let retriever = Retriever::new(
-            Arc::try_unwrap(self.pgvec_store.to_owned()).unwrap_or_else(|_| panic!("Failed to unwrap pgvec store.")),
+            Arc::try_unwrap(self.pgvec_store.to_owned())
+                .unwrap_or_else(|_| panic!("Failed to initial retriever with pgvec store.")),
             1024,
         )
         .with_options(opts);
