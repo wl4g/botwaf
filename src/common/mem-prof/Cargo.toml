@@ -19,5 +19,6 @@ tikv-jemalloc-ctl = { version = "0.6.0", features = ["use_std"] }
 # tikv-jemallocator = "0.6.0"
 
 [target.'cfg(not(windows))'.dependencies.tikv-jemalloc-sys]
+# see:https://crates.io/crates/tikv-jemalloc-sys
 features = ["stats", "profiling", "unprefixed_malloc_on_supported_platforms"]
 version = "0.6"

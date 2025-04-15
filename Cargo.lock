@@ -682,6 +682,7 @@ dependencies = [
  "botwaf-utils",
  "chrono",
  "clap 4.5.34",
+ "common-telemetry",
  "config",
  "dotenv",
  "hyper 1.6.0",

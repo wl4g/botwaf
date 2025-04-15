@@ -24,6 +24,7 @@ use async_trait::async_trait;
 use axum::{body::Body, response::Response};
 use botwaf_server::config::config;
 use botwaf_types::forwarder::HttpIncomingRequest;
+use common_telemetry::{debug, info};
 use hyper::{header, Method};
 use reqwest::Proxy;
 use std::{str::FromStr, sync::Arc, time::Duration};
@@ -58,6 +59,7 @@ impl HttpForwardHandler {
             .forward
             .upstream_destination_header_name
             .to_owned();
+
         let upstream_base_uri = incoming
             .headers
             .get(&upstream_header_name)
@@ -77,12 +79,16 @@ impl HttpForwardHandler {
             format!("{}{}", upstream_base_uri, incoming.path)
         };
 
-        tracing::debug!("Extracted the upstream uri: {}", url);
+        debug!("Extracted the upstream uri: {}", url);
         Ok(url)
     }
 
     // Forward the request to the upstream server.
-    async fn do_forward_request(&self, incoming: Arc<HttpIncomingRequest>) -> Result<Response<Body>> {
+    async fn do_forward_request(
+        &self,
+        incoming: Arc<HttpIncomingRequest>,
+        forward_url: String,
+    ) -> Result<Response<Body>> {
         let upstream_header = config::get_config()
             .services
             .forward
@@ -90,7 +96,7 @@ impl HttpForwardHandler {
             .as_str()
             .to_uppercase();
 
-        tracing::info!(
+        info!(
             "Forwarding request to upstream with host: {} path: {}, query: {}",
             incoming.host.to_owned().unwrap_or_default(),
             incoming.path,
@@ -99,7 +105,7 @@ impl HttpForwardHandler {
 
         let mut req_builder = self
             .client
-            .request(Method::from_str(incoming.method.as_str())?, incoming.path.to_owned());
+            .request(Method::from_str(incoming.method.as_str())?, forward_url);
 
         // Copy original request headers, but exclude certain headers
         for (name, value) in incoming.headers.iter() {
@@ -128,7 +134,7 @@ impl HttpForwardHandler {
             .await
             .context("Failed to read response body from upstream")?;
 
-        tracing::info!(
+        info!(
             "Forwarded response from upstream status: {}, host: {} path: {}, query: {}, headers: {:?}",
             status,
             incoming.host.to_owned().unwrap_or_default(),
@@ -163,10 +169,10 @@ impl IForwarder for HttpForwardHandler {
         Ok(())
     }
 
-    #[allow(unused)]
+    #[tracing::instrument(skip_all)]
     async fn http_forward(&self, incoming: Arc<HttpIncomingRequest>) -> Result<Response<Body>> {
         match self.get_upstream_url(incoming.to_owned()) {
-            Ok(url) => self.do_forward_request(incoming.to_owned()).await,
+            Ok(url) => self.do_forward_request(incoming.to_owned(), url).await,
             Err(err) => Err(err),
         }
     }

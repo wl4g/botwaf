@@ -9,9 +9,11 @@ workspace = true
 
 [dependencies]
 # Other modules dependencies.
+common-telemetry.workspace = true
 botwaf-server.workspace = true
 botwaf-types.workspace = true
 botwaf-utils.workspace = true
+
 # Thirdparty dependencies.
 axum.workspace = true
 hyper.workspace = true
