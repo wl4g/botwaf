@@ -537,7 +537,7 @@ impl Default for ServerProperties {
     fn default() -> Self {
         ServerProperties {
             host: String::from("127.0.0.1"),
-            port: 9999,
+            port: 9000,
             context_path: None,
         }
     }
@@ -556,7 +556,7 @@ impl Default for MgmtProperties {
         MgmtProperties {
             enabled: true,
             host: String::from("127.0.0.1"),
-            port: 9998,
+            port: 9001,
             tokio_console: TokioConsoleProperties::default(),
             pyroscope: PyroscopeAgentProperties::default(),
             otel: OtelProperties::default(),

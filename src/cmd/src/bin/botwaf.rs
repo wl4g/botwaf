@@ -20,6 +20,17 @@
 
 use botwaf_cmd::cmd;
 
+// Check for the allocator used: 'objdump -t target/debug/botwaf | grep mi_os_alloc'
+// see:https://rustcc.cn/article?id=75f290cd-e8e9-4786-96dc-9a44e398c7f5
+// #[global_allocator]
+// static GLOBAL: std::alloc::System = std::alloc::System;
+// static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+// Used jemalloc/tcmalloc as the default allocator for APM observe monitoring.
+#[cfg(not(windows))]
+#[global_allocator]
+static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 pub fn main() {
     cmd::execute_commands_app();
 }

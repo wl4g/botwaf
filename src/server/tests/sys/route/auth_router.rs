@@ -79,7 +79,7 @@ mod tests {
     #[allow(unused)]
     fn mock_http_request(auth_header: Option<&str>, uri: Option<&str>) -> Result<Request<()>, Error> {
         let mut req =
-            Request::builder().uri(uri.unwrap_or(format!("http://localhost:9999/_/healthz?foo=bar").as_str()));
+            Request::builder().uri(uri.unwrap_or(format!("http://localhost:9000/_/healthz?foo=bar").as_str()));
         if let Some(auth_header) = auth_header {
             req = req.header(http::header::AUTHORIZATION, auth_header);
         }

@@ -18,12 +18,10 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::sync::Arc;
-
+use crate::config::config::AppConfig;
 use lazy_static::lazy_static;
 use prometheus::{Counter, Encoder, Histogram, Registry, TextEncoder};
-
-use crate::config::config::AppConfig;
+use std::sync::Arc;
 
 lazy_static! {
     pub static ref REGISTRY: Registry = Registry::new();
@@ -42,7 +40,6 @@ lazy_static! {
     // Register more metrics...
 }
 
-#[allow(unused)]
 pub async fn handle_metrics() -> String {
     let encoder = TextEncoder::new();
     let mut buffer = Vec::new();

@@ -12,7 +12,9 @@ workspace = true
 common-error = { workspace = true }
 common-mem-prof = { workspace = true, optional = true }
 common-pprof = { workspace = true, optional = true }
-common-telemetry.workspace = true
+common-telemetry = { workspace = true, features = [
+    "deadlock_detection",
+] }
 botwaf-server.workspace = true
 botwaf-updater.workspace = true
 botwaf-verifier.workspace = true
@@ -21,7 +23,7 @@ botwaf-types.workspace = true
 botwaf-utils.workspace = true
 
 # Thirdparty dependencies.
-mimalloc.workspace = true
+#mimalloc.workspace = true
 axum-macros.workspace = true
 clap.workspace = true
 anyhow.workspace = true
@@ -46,9 +48,12 @@ path = "src/bin/botwaf.rs"
 [build-dependencies]
 chrono.workspace = true
 
+[target.'cfg(not(windows))'.dependencies]
+tikv-jemallocator = "0.6.0"
+
 [features]
-# default = ["servers/pprof", "servers/mem-prof"]
+# default = ["common-mem-prof", "common-pprof"]
+profiling-mem-prof = ["dep:common-mem-prof"]
+profiling-pprof = ["dep:common-pprof"]
 profiling-tokio-console = ["common-telemetry/profiling-tokio-console"]
 profiling-pyroscope = ["common-telemetry/profiling-pyroscope"]
-profiling-mem-prof = ["common-mem-prof"]
-profiling-pprof = ["common-pprof"]

@@ -189,8 +189,8 @@ function build::binary_on_host() {
     log "Build binary with args: $build_args..."
     SWAGGER_UI_DOWNLOAD_URL=file:$BASE_DIR/deps/swagger-ui-5.17.14.zip && \
     RUSTFLAGS="-C debug-prefix-map=$(pwd)=." && \
-    cargo build --features tokio-console,profiling $build_args
-    log "Build binary completed!"
+    cargo build --features deadlock_detection,profiling-mem-prof,profiling-pprof,profiling-tokio-console,profiling-pyroscope $build_args
+    log "Finished build binary!"
 }
 
 function build::docker_image() {
@@ -209,7 +209,7 @@ function build::docker_image() {
         -t wl4g/${image_name}:${image_tag} \
         -f ${BASE_DIR}/tooling/build/docker/${dockerfile} \
         --platform=amd64 \
-        --build-arg BUILD_ARGS="--features tokio-console,profiling" \
+        --build-arg BUILD_ARGS="--features deadlock_detection,profiling-mem-prof,profiling-pprof,profiling-tokio-console,profiling-pyroscope" \
         --build-arg BUILD_REPO_URL=$(git remote -v | head -1 | awk -F ' ' '{print $2}') \
         --build-arg BUILD_COMMIT_ID=$(git log | head -1 | awk -F ' ' '{print $2}' | cut -c 1-12) \
         --build-arg BUILD_BRANCH=$(git rev-parse --abbrev-ref HEAD) \

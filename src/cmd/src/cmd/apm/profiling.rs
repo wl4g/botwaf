@@ -19,34 +19,29 @@
 // This includes modifications and derived works.
 
 #[cfg(feature = "profiling-mem-prof")]
-// #[allow(dead_code)]
 pub mod mem_prof_router {
     use axum::http::StatusCode;
     use axum::response::IntoResponse;
-    use common_telemetry::info;
+    use common_telemetry::{error, info};
 
     #[axum_macros::debug_handler]
     // () -> common_mem_prof::error::Result<impl IntoResponse>
     pub async fn mem_prof_handler() -> impl IntoResponse {
-        info!("Dumping memory profile request... ");
-
-        // use common_mem_prof::error::DumpProfileDataSnafu;
-        // use snafu::ResultExt;
-        // Ok((
-        //     StatusCode::OK,
-        //     common_mem_prof::dump_profile().await.context(DumpProfileDataSnafu)?,
-        // ))
+        info!("Dumping memory profile ... ");
 
         match common_mem_prof::dump_profile().await {
             Ok(result) => {
                 info!("Finished dump memory file size: {}", result.len());
                 Ok((StatusCode::OK, result))
             }
-            Err(err) => Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                axum::Json(serde_json::json!({"error": err.to_string()})),
-            )
-                .into_response()),
+            Err(err) => {
+                error!("Failed to dump memory profile: {:?}", err);
+                Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    axum::Json(serde_json::json!({"error": err.to_string()})),
+                )
+                    .into_response())
+            }
         }
     }
 }
@@ -58,7 +53,7 @@ pub mod mem_prof_router {
     pub async fn mem_prof_handler() -> impl IntoResponse {
         (
             StatusCode::NOT_IMPLEMENTED,
-            axum::Json(serde_json::json!({"error": "The 'mem-prof' feature is disabled"})),
+            axum::Json(serde_json::json!({"error": "The 'profiling-mem-prof' feature is disabled"})),
         )
             .into_response()
     }
@@ -69,11 +64,9 @@ pub mod pprof_router {
     use axum::extract::Query;
     use axum::http::StatusCode;
     use axum::response::IntoResponse;
-    // use common_pprof::error::{DumpPprofSnafu, Result};
     use common_pprof::CPUProfiling;
     use common_telemetry::info;
     use serde::{Deserialize, Serialize};
-    // use snafu::ResultExt;
     use std::num::NonZeroI32;
     use std::time::Duration;
 
@@ -82,9 +75,7 @@ pub mod pprof_router {
     pub enum OutputFormat {
         /// google’s pprof format report in protobuf.
         Proto,
-        /// Simple text format.
         Text,
-        /// svg flamegraph.
         Flamegraph,
     }
 
@@ -93,7 +84,7 @@ pub mod pprof_router {
     pub struct PprofQuery {
         seconds: u64,
         frequency: NonZeroI32,
-        output: OutputFormat,
+        format: OutputFormat,
     }
 
     impl Default for PprofQuery {
@@ -102,17 +93,17 @@ pub mod pprof_router {
                 seconds: 5,
                 // Safety: 99 is non zero.
                 frequency: NonZeroI32::new(99).unwrap(),
-                output: OutputFormat::Proto,
+                format: OutputFormat::Proto,
             }
         }
     }
 
     #[axum_macros::debug_handler]
     pub async fn pprof_handler(Query(req): Query<PprofQuery>) -> impl IntoResponse {
-        info!("Dumping pprof request... {:?}", req);
+        info!("Dumping pprof ... {:?}", req);
 
-        let profiling = Profiling::new(Duration::from_secs(req.seconds), req.frequency.into());
-        let result = match req.output {
+        let profiling = CPUProfiling::new(Duration::from_secs(req.seconds), req.frequency.into());
+        let result = match req.format {
             OutputFormat::Proto => profiling.dump_proto().await,
             OutputFormat::Text => profiling.dump_text().await.map(|r| r.into_bytes()),
             OutputFormat::Flamegraph => profiling.dump_flamegraph().await,
@@ -136,6 +127,6 @@ pub mod pprof_router {
     use axum::{http::StatusCode, response::IntoResponse};
     #[axum_macros::debug_handler]
     pub async fn pprof_handler() -> impl IntoResponse {
-        (StatusCode::NOT_IMPLEMENTED, "The 'pprof' feature is disabled").into_response()
+        (StatusCode::NOT_IMPLEMENTED, "The 'profiling-pprof' feature is disabled").into_response()
     }
 }

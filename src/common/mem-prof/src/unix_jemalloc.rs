@@ -28,13 +28,13 @@ const OPT_PROF: &[u8] = b"opt.prof\0";
 
 pub async fn dump_profile() -> Result<Vec<u8>> {
     ensure!(is_prof_enabled()?, ProfilingNotEnabledSnafu);
+
     let tmp_path = tempfile::tempdir().map_err(|_| {
         BuildTempPathSnafu {
             path: std::env::temp_dir(),
         }
         .build()
     })?;
-
     let mut path_buf = PathBuf::from(tmp_path.path());
     path_buf.push("botwaf.hprof");
 

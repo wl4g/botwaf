@@ -70,7 +70,7 @@ docker run -d \
 --name botwaf \
 --restart unless-stopped \
 --security-opt seccomp=unconfined \
--p 9999:9999 \
+-p 9000:9000 \
 -e RUST_BACKTRACE=full \
 registry.cn-shenzhen.aliyuncs.com/wl4g/botwaf:latest
 ```
@@ -79,7 +79,7 @@ registry.cn-shenzhen.aliyuncs.com/wl4g/botwaf:latest
 
 ```bash
 curl -I -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36' \
-http://localhost:9999/admin/get
+http://localhost:9000/admin/get
 #HTTP/1.1 403 Forbidden
 #content-length: 23
 #date: Sun, 09 Mar 2025 10:07:27 GM
@@ -121,7 +121,7 @@ server {
 
     location / {
         proxy_set_header X-Upstream-Destination "http://${LOCAL_IP}:8080";
-        proxy_pass http://${LOCAL_IP}:9999; # Proxy to Botwaf
+        proxy_pass http://${LOCAL_IP}:9000; # Proxy to Botwaf
         error_page 433 = @handle_waf_block;
         proxy_intercept_errors off;
     }

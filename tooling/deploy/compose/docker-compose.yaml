@@ -74,7 +74,7 @@ services:
     restart: unless-stopped
     command: serve
     ports:
-      - 9999:9999
+      - 9000:9000
     environment:
       <<: *x-shared-env
     depends_on:

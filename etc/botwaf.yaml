@@ -23,13 +23,13 @@ service-name: botwaf
 
 server:
   host: 0.0.0.0
-  port: 9999
+  port: 9000
   context-path: "/"
 
 mgmt:
   enabled: true
   host: 0.0.0.0
-  port: 9998
+  port: 9001
   tokio-console:
     enabled: true
     server-bind: "0.0.0.0:6669"

@@ -35,13 +35,6 @@ use std::{collections::BTreeMap, sync::OnceLock};
 use updater::BotwafUpdaterServer;
 use verifier::BotwafVerifierServer;
 
-/// TODO: Used jemalloc or tcmalloc as the default allocator for APM observe monitoring.
-/// Check for the allocator used: 'objdump -t target/debug/botwaf | grep mi_os_alloc'
-/// see:https://rustcc.cn/article?id=75f290cd-e8e9-4786-96dc-9a44e398c7f5
-#[global_allocator]
-// static GLOBAL: std::alloc::System = std::alloc::System;
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 type SubcommandBuildFn = fn() -> Command;
 type SubcommandHandleFn = fn(&ArgMatches, bool) -> ();
 
