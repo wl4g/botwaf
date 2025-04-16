@@ -100,7 +100,7 @@ pub mod pprof_router {
 
     #[axum_macros::debug_handler]
     pub async fn pprof_handler(Query(req): Query<PprofQuery>) -> impl IntoResponse {
-        info!("Dumping pprof ... {:?}", req);
+        info!("Dumping pprof with {:?}", req);
 
         let profiling = CPUProfiling::new(Duration::from_secs(req.seconds), req.frequency.into());
         let result = match req.format {

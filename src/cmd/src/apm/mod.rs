@@ -26,8 +26,8 @@ use axum::{routing, Router};
 use profiling::{mem_prof_router, pprof_router};
 use prometheus::{Encoder, TextEncoder};
 
-/// Handler to export debug operations.
-pub fn handle_debug() -> axum::Router {
+/// Export to debugging operations router.
+pub fn debug_router() -> axum::Router {
     // Handlers for debug, we don't expect a timeout.
     Router::new().nest(
         "/debug",
