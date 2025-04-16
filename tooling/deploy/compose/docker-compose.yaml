@@ -1,4 +1,5 @@
 x-shared-env: &shared-api-worker-env
+  RUST_BACKTRACE: full
   SWAGGER__ENABLED: ${SWAGGER_ENABLED:-true}
   LOGGING__MODE: ${LOGGING_MODE:-JSON}
   LOGGING__LEVEL: ${LOGGING_LEVEL:-DEBUG}
@@ -69,14 +70,16 @@ services:
       timeout: 3s
       retries: 30
 
-  serve:
+  server:
     image: registry.cn-shenzhen.aliyuncs.com/wl4g/botwaf:latest
     restart: unless-stopped
-    command: serve
-    ports:
-      - 9000:9000
+    command: server
+    security_opt:
+      - seccomp=unconfined
     environment:
       <<: *x-shared-env
+    ports:
+      - 9000:9000
     depends_on:
       - pgvector
       - redis
@@ -90,6 +93,8 @@ services:
     image: registry.cn-shenzhen.aliyuncs.com/wl4g/botwaf:latest
     restart: unless-stopped
     command: updater
+    security_opt:
+      - seccomp=unconfined
     environment:
       <<: *x-shared-env
     depends_on:
@@ -105,6 +110,8 @@ services:
     image: registry.cn-shenzhen.aliyuncs.com/wl4g/botwaf:latest
     restart: unless-stopped
     command: updater
+    security_opt:
+      - seccomp=unconfined
     environment:
       <<: *x-shared-env
     depends_on:

@@ -92,7 +92,7 @@ pub fn execute_commands_app() -> () {
         .author("James Wong")
         .about(
             format!(
-                "Botwaf - A Mini Open Source AI Bot WAF written in Rust.\n\n{}",
+                "Botwaf - A Mini Open Source AI-driven Bot WAF written in Rust.\n\n{}",
                 config::VERSION.as_str()
             )
             .to_owned(),
