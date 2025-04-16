@@ -93,7 +93,7 @@ impl LLMManager {
         if let Some(implementation) = this.implementations.get(&name) {
             Ok(implementation.to_owned())
         } else {
-            let errmsg = format!("Could not obtain registered Forwarder '{}'.", name);
+            let errmsg = format!("Could not obtain registered LLM handler '{}'.", name);
             return Err(Error::msg(errmsg));
         }
     }

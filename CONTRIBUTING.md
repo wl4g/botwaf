@@ -18,8 +18,8 @@ It can feel intimidating to contribute to a complex project, but it can also be 
 
 Pull requests are great, but we accept all kinds of other help if you like. Such as
 
-- Write tutorials or blog posts. Blog, speak about, or create tutorials about one of Botwaf's many features. Mention [@botwaf](https://twitter.com/botwaf) on Twitter and email botwaf@gmail.com so we can give pointers and tips and help you spread the word by promoting your content on Botwaf communication channels.
-- Improve the documentation. [Submit documentation](http://github.com/wl4g/botwaf/docs/) updates, enhancements, designs, or bug fixes, and fixing any spelling or grammar errors will be very much appreciated.
+- Write tutorials or blog posts. Blog, speak about, or create tutorials about one of Botwaf's many features. Mention [@botwaf](https://twitter.com/botwaf) on Twitter and email <botwaf@gmail.com> so we can give pointers and tips and help you spread the word by promoting your content on Botwaf communication channels.
+- Improve the documentation. [Submit documentation](https://github.com/wl4g/botwaf/docs/) updates, enhancements, designs, or bug fixes, and fixing any spelling or grammar errors will be very much appreciated.
 - Present at meetups and conferences about your Botwaf projects. Your unique challenges and successes in building things with Botwaf can provide great speaking material. We'd love to review your talk abstract, so get in touch with us if you'd like some help!
 - Submitting bug reports. To report a bug or a security issue, you can [open a new GitHub issue](https://github.com/wl4g/botwaf/issues/new).
 - Speak up feature requests. Send feedback is a great way for us to understand your different use cases of Botwaf better. If you want to share your experience with Botwaf, or if you want to discuss any ideas, you can start a discussion on [GitHub discussions](https://github.com/wl4g/botwaf/discussions), chat with the Botwaf team on [Slack](https://botwaf.com/slack), or you can tweet [@botwaf](https://twitter.com/botwaf) on Twitter.
@@ -60,22 +60,22 @@ You could setup the [`pre-commit`](https://pre-commit.com/#plugins) hooks to run
 
 1. Install `pre-commit`
 
-        pip install pre-commit
+    pip install pre-commit
 
     or
 
-        brew install pre-commit
+    brew install pre-commit
 
 2. Install the `pre-commit` hooks
 
-        $ pre-commit install
-        pre-commit installed at .git/hooks/pre-commit
+    $ pre-commit install
+    pre-commit installed at .git/hooks/pre-commit
 
-        $ pre-commit install --hook-type commit-msg
-        pre-commit installed at .git/hooks/commit-msg
+    $ pre-commit install --hook-type commit-msg
+    pre-commit installed at .git/hooks/commit-msg
 
-        $ pre-commit install --hook-type pre-push
-        pre-commit installed at .git/hooks/pre-push
+    $ pre-commit install --hook-type pre-push
+    pre-commit installed at .git/hooks/pre-push
 
 Now, `pre-commit` will run automatically on `git commit`.
 

@@ -41,7 +41,7 @@ runs:
         retention-days: 3
 
     - name: Build standard botwaf
-      uses: ./.github/actions/build-botwaf-binary
+      uses: ./.github/actions/build-app-binary
       with:
         base-image: ubuntu
         features: pyo3_backend,servers/dashboard
@@ -52,7 +52,7 @@ runs:
 
     - name: Build botwaf without pyo3
       if: ${{ inputs.dev-mode == 'false' }}
-      uses: ./.github/actions/build-botwaf-binary
+      uses: ./.github/actions/build-app-binary
       with:
         base-image: ubuntu
         features: servers/dashboard
@@ -67,7 +67,7 @@ runs:
         rm -rf ./target/
 
     - name: Build botwaf on centos base image
-      uses: ./.github/actions/build-botwaf-binary
+      uses: ./.github/actions/build-app-binary
       if: ${{ inputs.arch == 'amd64' && inputs.dev-mode == 'false' }} # Only build centos7 base image for amd64.
       with:
         base-image: centos
@@ -78,7 +78,7 @@ runs:
         working-dir: ${{ inputs.working-dir }}
 
     - name: Build botwaf on android base image
-      uses: ./.github/actions/build-botwaf-binary
+      uses: ./.github/actions/build-app-binary
       if: ${{ inputs.arch == 'amd64' && inputs.dev-mode == 'false' }} # Only build android base image on amd64.
       with:
         base-image: android

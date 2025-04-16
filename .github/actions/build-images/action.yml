@@ -32,7 +32,7 @@ runs:
   using: composite
   steps:
     - name: Build and push standard images to dockerhub
-      uses: ./.github/actions/build-botwaf-images
+      uses: ./.github/actions/build-app-images
       with: # The image will be used as '${{ inputs.image-registry }}/${{ inputs.image-namespace }}/${{ inputs.image-name }}:${{ inputs.version }}'
         image-registry: ${{ inputs.image-registry }}
         image-namespace: ${{ inputs.image-namespace }}
@@ -48,7 +48,7 @@ runs:
 
     - name: Build and push centos images to dockerhub
       if: ${{ inputs.dev-mode == 'false' }}
-      uses: ./.github/actions/build-botwaf-images
+      uses: ./.github/actions/build-app-images
       with:
         image-registry: ${{ inputs.image-registry }}
         image-namespace: ${{ inputs.image-namespace }}
