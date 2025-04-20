@@ -63,7 +63,7 @@ impl AsyncRepository<User> for UserSQLiteRepository {
     }
 
     async fn select_by_id(&self, id: i64) -> Result<User, Error> {
-        let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+        let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1 and del_flag = 0")
             .bind(id)
             .fetch_one(self.inner.get_pool())
             .await
@@ -130,7 +130,7 @@ impl AsyncRepository<User> for UserSQLiteRepository {
     }
 
     async fn delete_by_id(&self, id: i64) -> Result<u64, Error> {
-        let delete_result = sqlx::query("DELETE FROM users WHERE id = $1")
+        let delete_result = sqlx::query("DELETE FROM users WHERE id = $1 and del_flag = 0")
             .bind(id)
             .execute(self.inner.get_pool())
             .await
