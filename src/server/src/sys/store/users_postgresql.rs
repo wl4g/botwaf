@@ -18,14 +18,18 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use super::postgres::PostgresRepository;
-use super::AsyncRepository;
 use crate::config::config::PostgresAppDBProperties;
+use crate::dynamic_postgres_insert;
+use crate::dynamic_postgres_query;
+use crate::dynamic_postgres_update;
+use crate::store::postgres::PostgresRepository;
+use crate::store::AsyncRepository;
 use anyhow::{Error, Ok};
 use async_trait::async_trait;
 use botwaf_types::user::User;
 use botwaf_types::PageRequest;
 use botwaf_types::PageResponse;
+use common_telemetry::info;
 
 pub struct UserPostgresRepository {
     inner: PostgresRepository<User>,
@@ -43,7 +47,7 @@ impl UserPostgresRepository {
 impl AsyncRepository<User> for UserPostgresRepository {
     async fn select(&self, user: User, page: PageRequest) -> Result<(PageResponse, Vec<User>), Error> {
         let result = dynamic_postgres_query!(user, "users", self.inner.get_pool(), "update_time", page, User).unwrap();
-        tracing::info!("query users: {:?}", result);
+        info!("query users: {:?}", result);
         Ok((result.0, result.1))
     }
 
@@ -54,7 +58,7 @@ impl AsyncRepository<User> for UserPostgresRepository {
             .await
             .unwrap();
 
-        tracing::info!("query user: {:?}", user);
+        info!("query user: {:?}", user);
         Ok(user)
     }
 
@@ -80,13 +84,13 @@ impl AsyncRepository<User> for UserPostgresRepository {
         // .map(|row: sqlx::postgres::PgRow| row.get("id"))?;
 
         let inserted_id = dynamic_postgres_insert!(user, "users", self.inner.get_pool()).unwrap();
-        tracing::info!("Inserted user.id: {:?}", inserted_id);
+        info!("Inserted user.id: {:?}", inserted_id);
         Ok(inserted_id)
     }
 
     async fn update(&self, mut user: User) -> Result<i64, Error> {
         let updated_id = dynamic_postgres_update!(user, "users", self.inner.get_pool()).unwrap();
-        tracing::info!("Updated user.id: {:?}", updated_id);
+        info!("Updated user.id: {:?}", updated_id);
         Ok(updated_id)
     }
 
@@ -96,7 +100,7 @@ impl AsyncRepository<User> for UserPostgresRepository {
             .await
             .unwrap();
 
-        tracing::info!("Deleted result: {:?}", delete_result);
+        info!("Deleted result: {:?}", delete_result);
         Ok(delete_result.rows_affected())
     }
 
@@ -107,7 +111,7 @@ impl AsyncRepository<User> for UserPostgresRepository {
             .await
             .unwrap();
 
-        tracing::info!("Deleted result: {:?}", delete_result);
+        info!("Deleted result: {:?}", delete_result);
         Ok(delete_result.rows_affected())
     }
 }

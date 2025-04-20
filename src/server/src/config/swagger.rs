@@ -19,7 +19,7 @@
 // This includes modifications and derived works.
 
 use super::config::{self, AppConfig};
-use crate::llm::route::knowledge_router::__path_handle_knowledge_upload;
+use crate::modules::llm::route::knowledge_router::__path_handle_knowledge_upload;
 use botwaf_types::knowledge::KnowledgeUploadInfo;
 use std::collections::BTreeMap;
 use utoipa::openapi::{PathItem, Paths};

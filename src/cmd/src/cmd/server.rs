@@ -32,8 +32,8 @@ use botwaf_server::{
         swagger,
     },
     context::state::BotwafState,
-    llm::handler::llm_base::LLMManager,
     mgmt::{apm, health::init as health_router},
+    modules::llm::handler::llm_base::LLMManager,
     sys::route::{
         auth_router::{auth_middleware, init as auth_router},
         user_router::init as user_router,

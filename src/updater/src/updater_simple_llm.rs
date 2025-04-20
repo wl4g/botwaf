@@ -21,7 +21,7 @@
 // use openai::chat::{ChatCompletion, ChatCompletionMessage, ChatCompletionMessageRole};
 use super::updater_base::{BotwafAccessEvent, IBotwafUpdater};
 use async_trait::async_trait;
-use botwaf_server::{config::config::UpdaterProperties, llm::handler::llm_base::LLMManager};
+use botwaf_server::{config::config::UpdaterProperties, modules::llm::handler::llm_base::LLMManager};
 use common_telemetry::info;
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};

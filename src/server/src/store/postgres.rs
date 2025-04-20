@@ -118,6 +118,7 @@ impl<T: Any + Send + Sync> AsyncRepository<T> for PostgresRepository<T> {
     }
 }
 
+#[macro_export]
 macro_rules! dynamic_postgres_query {
     ($bean:expr, $table:expr, $pool:expr, $order_by:expr, $page:expr, $($t:ty),+) => {
           {
@@ -184,6 +185,7 @@ macro_rules! dynamic_postgres_query {
     };
 }
 
+#[macro_export]
 macro_rules! dynamic_postgres_insert {
     ($bean:expr, $table:expr, $pool:expr) => {
         {
@@ -261,6 +263,7 @@ macro_rules! dynamic_postgres_insert {
     };
 }
 
+#[macro_export]
 macro_rules! dynamic_postgres_update {
     ($bean:expr, $table:expr, $pool:expr) => {
         {

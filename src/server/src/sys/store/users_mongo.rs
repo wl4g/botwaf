@@ -18,20 +18,18 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::sync::Arc;
-
+use crate::config::config::MongoAppDBProperties;
+use crate::store::mongo::MongoRepository;
+use crate::store::AsyncRepository;
+use crate::{dynamic_mongo_insert, dynamic_mongo_query, dynamic_mongo_update};
 use anyhow::Error;
 use async_trait::async_trait;
-
-use mongodb::bson::doc;
-use mongodb::Collection;
-
-use super::mongo::MongoRepository;
-use super::AsyncRepository;
-use crate::config::config::MongoAppDBProperties;
-use crate::{dynamic_mongo_insert, dynamic_mongo_query, dynamic_mongo_update};
 use botwaf_types::user::User;
 use botwaf_types::{PageRequest, PageResponse};
+use common_telemetry::info;
+use mongodb::bson::doc;
+use mongodb::Collection;
+use std::sync::Arc;
 
 pub struct UserMongoRepository {
     #[allow(unused)]
@@ -53,7 +51,7 @@ impl AsyncRepository<User> for UserMongoRepository {
         //let result = &self.inner.select(user, page).await;
         match dynamic_mongo_query!(user, self.collection, "update_time", page, User) {
             Ok(result) => {
-                tracing::info!("query users: {:?}", result);
+                info!("query users: {:?}", result);
                 Ok((result.0, result.1))
             }
             Err(error) => Err(error),

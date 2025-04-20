@@ -18,15 +18,18 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use crate::config::config::SqliteAppDBProperties;
+use crate::dynamic_sqlite_insert;
+use crate::dynamic_sqlite_query;
+use crate::dynamic_sqlite_update;
+use crate::store::sqlite::SQLiteRepository;
+use crate::store::AsyncRepository;
 use anyhow::{Error, Ok};
 use async_trait::async_trait;
-
-use super::sqlite::SQLiteRepository;
-use super::AsyncRepository;
-use crate::config::config::SqliteAppDBProperties;
 use botwaf_types::user::User;
 use botwaf_types::PageRequest;
 use botwaf_types::PageResponse;
+use common_telemetry::info;
 
 pub struct UserSQLiteRepository {
     inner: SQLiteRepository<User>,
@@ -45,7 +48,7 @@ impl AsyncRepository<User> for UserSQLiteRepository {
     async fn select(&self, user: User, page: PageRequest) -> Result<(PageResponse, Vec<User>), Error> {
         let result = dynamic_sqlite_query!(user, "users", self.inner.get_pool(), "update_time", page, User).unwrap();
 
-        tracing::info!("query users: {:?}", result);
+        info!("query users: {:?}", result);
         Ok((result.0, result.1))
 
         // sqlx
@@ -54,7 +57,7 @@ impl AsyncRepository<User> for UserSQLiteRepository {
         //   .bind(page.get_limit())
         //   .fetch_all(self.inner.get_pool()).await
         //   .map_err(|e| {
-        //      tracing::info!("Error to select all: {:?}", e);
+        //      info!("Error to select all: {:?}", e);
         //      Error::msg(e.to_string())
         //   })
     }
@@ -66,13 +69,13 @@ impl AsyncRepository<User> for UserSQLiteRepository {
             .await
             .unwrap();
 
-        tracing::info!("query user: {:?}", user);
+        info!("query user: {:?}", user);
         Ok(user)
     }
 
     async fn insert(&self, mut user: User) -> Result<i64, Error> {
         let inserted_id = dynamic_sqlite_insert!(user, "users", self.inner.get_pool()).unwrap();
-        tracing::info!("Inserted user.id: {:?}", inserted_id);
+        info!("Inserted user.id: {:?}", inserted_id);
         Ok(inserted_id)
 
         //  let result = sqlx
@@ -94,14 +97,14 @@ impl AsyncRepository<User> for UserSQLiteRepository {
         //   .bind(user.base.del_flag)
         //   .execute(self.inner.get_pool()).await
         //   .unwrap();
-        // tracing::info!("Inserted result: {:?}, user.id: {:?}", result, id);
+        // info!("Inserted result: {:?}, user.id: {:?}", result, id);
 
         // Ok(id)
     }
 
     async fn update(&self, mut user: User) -> Result<i64, Error> {
         let updated_id = dynamic_sqlite_update!(user, "users", self.inner.get_pool()).unwrap();
-        tracing::info!("Updated user.id: {:?}", updated_id);
+        info!("Updated user.id: {:?}", updated_id);
         Ok(updated_id)
 
         // let id = param.base.id.ok_or_else(|| Error::msg("User id is required for update"))?;
@@ -112,7 +115,7 @@ impl AsyncRepository<User> for UserSQLiteRepository {
         //   .bind(id)
         //   .execute(self.inner.get_pool()).await
         //   .unwrap();
-        // tracing::info!("updated result: {:?}", update_result);
+        // info!("updated result: {:?}", update_result);
         // Ok(update_result.rows_affected() as i64)
     }
 
@@ -122,7 +125,7 @@ impl AsyncRepository<User> for UserSQLiteRepository {
             .await
             .unwrap();
 
-        tracing::info!("Deleted result: {:?}", delete_result);
+        info!("Deleted result: {:?}", delete_result);
         Ok(delete_result.rows_affected())
     }
 
@@ -133,7 +136,7 @@ impl AsyncRepository<User> for UserSQLiteRepository {
             .await
             .unwrap();
 
-        tracing::info!("Deleted result: {:?}", delete_result);
+        info!("Deleted result: {:?}", delete_result);
         Ok(delete_result.rows_affected())
     }
 }

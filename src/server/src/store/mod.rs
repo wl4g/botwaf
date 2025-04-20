@@ -23,9 +23,6 @@ pub mod mongo;
 pub mod postgres;
 #[macro_use]
 pub mod sqlite;
-pub mod users_mongo;
-pub mod users_postgresql;
-pub mod users_sqlite;
 
 use crate::config::config::{AppConfigProperties, AppDBType};
 use anyhow::Error;

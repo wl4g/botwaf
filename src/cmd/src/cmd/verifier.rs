@@ -22,8 +22,8 @@ use crate::cmd::management::ManagementServer;
 use axum::Router;
 use botwaf_server::config::config::AppConfig;
 use botwaf_server::context::state::BotwafState;
-use botwaf_server::llm::handler::llm_base::LLMManager;
 use botwaf_server::mgmt::health::init as health_router;
+use botwaf_server::modules::llm::handler::llm_base::LLMManager;
 use botwaf_server::{
     config::config::{self, GIT_BUILD_DATE, GIT_COMMIT_HASH, GIT_VERSION},
     mgmt::apm,

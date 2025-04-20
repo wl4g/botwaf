@@ -18,7 +18,7 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use crate::{config::config, llm::handler::llm_langchain::LangchainLLMHandler};
+use crate::{config::config, modules::llm::handler::llm_langchain::LangchainLLMHandler};
 use anyhow::Error;
 use botwaf_types::knowledge::KnowledgeUploadInfo;
 use lazy_static::lazy_static;

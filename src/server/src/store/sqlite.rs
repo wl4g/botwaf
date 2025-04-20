@@ -18,17 +18,16 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
+use super::AsyncRepository;
+use crate::config::config::SqliteAppDBProperties;
 use anyhow::Error;
+use async_trait::async_trait;
+use botwaf_types::{PageRequest, PageResponse};
+use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
 use std::any::Any;
 use std::fs;
 use std::marker::PhantomData;
 use std::path::Path;
-
-use super::AsyncRepository;
-use crate::config::config::SqliteAppDBProperties;
-use async_trait::async_trait;
-use botwaf_types::{PageRequest, PageResponse};
-use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
 use tracing::{debug, info};
 
 //
@@ -145,6 +144,7 @@ impl<T: Any + Send + Sync> AsyncRepository<T> for SQLiteRepository<T> {
     }
 }
 
+#[macro_export]
 macro_rules! dynamic_sqlite_query {
     ($bean:expr, $table:expr, $pool:expr, $order_by:expr, $page:expr, $($t:ty),+) => {
           {
@@ -211,6 +211,7 @@ macro_rules! dynamic_sqlite_query {
     };
 }
 
+#[macro_export]
 macro_rules! dynamic_sqlite_insert {
     ($bean:expr, $table:expr, $pool:expr) => {
         {
@@ -290,6 +291,7 @@ macro_rules! dynamic_sqlite_insert {
     };
 }
 
+#[macro_export]
 macro_rules! dynamic_sqlite_update {
     ($bean:expr, $table:expr, $pool:expr) => {
         {
