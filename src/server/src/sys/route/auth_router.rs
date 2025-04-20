@@ -35,7 +35,7 @@ use axum::{
     Router,
 };
 use botwaf_types::{
-    auth::{
+    sys::auth::{
         CallbackGithubRequest, CallbackOidcRequest, EthersWalletLoginRequest, GithubUserInfo, LogoutRequest,
         PasswordLoginRequest, PasswordPubKeyRequest, PasswordPubKeyResponse,
     },

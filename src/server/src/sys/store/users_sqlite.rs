@@ -26,7 +26,7 @@ use crate::store::sqlite::SQLiteRepository;
 use crate::store::AsyncRepository;
 use anyhow::{Error, Ok};
 use async_trait::async_trait;
-use botwaf_types::user::User;
+use botwaf_types::sys::user::User;
 use botwaf_types::PageRequest;
 use botwaf_types::PageResponse;
 use common_telemetry::info;

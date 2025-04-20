@@ -31,7 +31,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use botwaf_server::{config::config, context::state::BotwafState, util::auths};
-use botwaf_types::forwarder::HttpIncomingRequest;
+use botwaf_types::modules::forward::forwarder::HttpIncomingRequest;
 use hyper::StatusCode;
 use lazy_static::lazy_static;
 use regex::Regex;

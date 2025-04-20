@@ -20,7 +20,7 @@
 
 use crate::{config::config, modules::llm::handler::llm_langchain::LangchainLLMHandler};
 use anyhow::Error;
-use botwaf_types::knowledge::KnowledgeUploadInfo;
+use botwaf_types::modules::llm::knowledge::KnowledgeUploadInfo;
 use lazy_static::lazy_static;
 use std::{
     collections::HashMap,

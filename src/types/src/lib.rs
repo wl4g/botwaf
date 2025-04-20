@@ -19,10 +19,8 @@
 // This includes modifications and derived works.
 
 pub mod api_v1;
-pub mod auth;
-pub mod forwarder;
-pub mod knowledge;
-pub mod user;
+pub mod modules;
+pub mod sys;
 
 use anyhow::Error;
 use chrono::Utc;

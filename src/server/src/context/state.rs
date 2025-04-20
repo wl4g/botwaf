@@ -28,7 +28,7 @@ use crate::{
         users_mongo::UserMongoRepository, users_postgresql::UserPostgresRepository, users_sqlite::UserSQLiteRepository,
     },
 };
-use botwaf_types::user::User;
+use botwaf_types::sys::user::User;
 use botwaf_utils::httpclients;
 use modsecurity::{ModSecurity, Rules};
 use oauth2::basic::BasicClient;

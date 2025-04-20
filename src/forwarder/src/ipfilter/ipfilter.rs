@@ -21,7 +21,7 @@
 use crate::ipfilter::ipfilter_redis::RedisIPFilter;
 use anyhow::{Error, Result};
 use botwaf_server::{cache::redis::StringRedisCache, config::config};
-use botwaf_types::forwarder::HttpIncomingRequest;
+use botwaf_types::modules::forward::forwarder::HttpIncomingRequest;
 use lazy_static::lazy_static;
 use std::{
     collections::HashMap,

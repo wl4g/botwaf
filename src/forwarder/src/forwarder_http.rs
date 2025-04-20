@@ -23,7 +23,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use axum::{body::Body, response::Response};
 use botwaf_server::config::config;
-use botwaf_types::forwarder::HttpIncomingRequest;
+use botwaf_types::modules::forward::forwarder::HttpIncomingRequest;
 use common_telemetry::{debug, info};
 use hyper::{header, Method};
 use reqwest::Proxy;

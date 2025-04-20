@@ -23,7 +23,7 @@ use crate::{
     sys::{handler::auth_handler::PrincipalType, route::auth_router::EXCLUDED_PREFIX_PATHS},
 };
 use axum::body::Body;
-use botwaf_types::auth::{LoggedResponse, TokenWrapper};
+use botwaf_types::sys::auth::{LoggedResponse, TokenWrapper};
 use botwaf_utils::{base64s::Base64Helper, webs};
 use chrono::{Duration, Utc};
 use hyper::{HeaderMap, Response, StatusCode, Uri};

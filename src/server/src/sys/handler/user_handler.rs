@@ -21,7 +21,7 @@
 use crate::context::state::BotwafState;
 use anyhow::{Error, Ok};
 use async_trait::async_trait;
-use botwaf_types::user::{DeleteUserRequest, QueryUserRequest, SaveUserRequest, SaveUserRequestWith, User};
+use botwaf_types::sys::user::{DeleteUserRequest, QueryUserRequest, SaveUserRequest, SaveUserRequestWith, User};
 use botwaf_types::{BaseBean, PageRequest, PageResponse};
 use common_audit_log::audit_log;
 use std::sync::Arc;

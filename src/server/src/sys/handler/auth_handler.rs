@@ -24,8 +24,8 @@ use crate::{config::config::AppConfig, context::state::BotwafState};
 use anyhow::{anyhow, Error, Ok};
 use async_trait::async_trait;
 use botwaf_types::{
-    auth::{EthersWalletLoginRequest, GithubUserInfo, LogoutRequest, PasswordLoginRequest, PasswordPubKeyRequest},
-    user::{SaveUserRequest, User},
+    sys::auth::{EthersWalletLoginRequest, GithubUserInfo, LogoutRequest, PasswordLoginRequest, PasswordPubKeyRequest},
+    sys::user::{SaveUserRequest, User},
 };
 use botwaf_utils::rsa_ciphers::RSACipher;
 use chrono::Utc;

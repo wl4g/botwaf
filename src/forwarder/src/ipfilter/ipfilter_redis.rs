@@ -21,7 +21,7 @@
 use super::ipfilter::IPFilter;
 use anyhow::{Error, Ok, Result};
 use botwaf_server::cache::{redis::StringRedisCache, ICache};
-use botwaf_types::forwarder::HttpIncomingRequest;
+use botwaf_types::modules::forward::forwarder::HttpIncomingRequest;
 use std::{net::IpAddr, str::FromStr, sync::Arc};
 
 pub struct RedisIPFilter {

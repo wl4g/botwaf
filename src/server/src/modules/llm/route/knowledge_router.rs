@@ -25,7 +25,7 @@ use axum::{
     routing::post,
     Json, Router,
 };
-use botwaf_types::knowledge::KnowledgeUploadInfo;
+use botwaf_types::modules::llm::knowledge::KnowledgeUploadInfo;
 use hyper::StatusCode;
 use sqlx::types::uuid;
 use std::fs::{self, File};

@@ -29,9 +29,9 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use botwaf_types::user::{DeleteUserRequest, QueryUserRequest, SaveUserRequest, User};
+use botwaf_types::sys::user::{DeleteUserRequest, QueryUserRequest, SaveUserRequest, User};
 use botwaf_types::{
-    user::{DeleteUserResponse, QueryUserResponse, SaveUserRequestWith, SaveUserResponse},
+    sys::user::{DeleteUserResponse, QueryUserResponse, SaveUserRequestWith, SaveUserResponse},
     PageRequest, RespBase,
 };
 use common_telemetry::info;

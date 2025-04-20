@@ -24,7 +24,7 @@ use crate::store::AsyncRepository;
 use crate::{dynamic_mongo_insert, dynamic_mongo_query, dynamic_mongo_update};
 use anyhow::Error;
 use async_trait::async_trait;
-use botwaf_types::user::User;
+use botwaf_types::sys::user::User;
 use botwaf_types::{PageRequest, PageResponse};
 use common_telemetry::info;
 use mongodb::bson::doc;

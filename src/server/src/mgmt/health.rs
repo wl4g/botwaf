@@ -22,7 +22,7 @@ use crate::config::config::{AppDBType, CacheProvider};
 use crate::context::state::BotwafState;
 use async_trait::async_trait;
 use axum::{extract::State, response::IntoResponse, routing::get, Router};
-use botwaf_types::{user::User, PageRequest};
+use botwaf_types::{sys::user::User, PageRequest};
 use hyper::StatusCode;
 use serde::Serialize;
 use std::collections::HashMap;
