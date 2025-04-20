@@ -143,11 +143,7 @@ pub struct PageResponse {
 
 impl PageResponse {
     pub fn new(total: Option<i64>, num: Option<u32>, limit: Option<u32>) -> Self {
-        Self {
-            total: total,
-            num: num,
-            limit,
-        }
+        Self { total, num, limit }
     }
 }
 

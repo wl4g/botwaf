@@ -726,6 +726,7 @@ dependencies = [
  "chrono",
  "clap 4.5.34",
  "common-audit-log",
+ "common-telemetry",
  "config",
  "criterion",
  "dotenv",

@@ -29,6 +29,7 @@ use botwaf_types::{
 };
 use botwaf_utils::rsa_ciphers::RSACipher;
 use chrono::Utc;
+use common_telemetry::info;
 use ethers::types::{Address, Signature};
 use hyper::{header, StatusCode};
 use lazy_static::lazy_static;
@@ -108,7 +109,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
         let value = pair.get_base64_private_key().unwrap();
         match cache.set(key, value, Some(30_000)).await {
             std::result::Result::Ok(_) => {
-                tracing::info!("Got login pubkey for: {:?}", param);
+                info!("Got login pubkey for: {:?}", param);
                 Ok(pair.get_base64_public_key().unwrap())
             }
             Err(e) => {
@@ -191,7 +192,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
         // TODO: using expires config? To ensure safety, expire as soon as possible. 10s
         match cache.set(key, value, Some(10_000)).await {
             std::result::Result::Ok(_) => {
-                tracing::info!("Created auth nonce for {}", sid);
+                info!("Created auth nonce for {}", sid);
                 Ok(())
             }
             Err(e) => {
@@ -208,7 +209,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
 
         match cache.get(key).await {
             std::result::Result::Ok(nonce) => {
-                tracing::info!("Got auth nonce for {}", sid);
+                info!("Got auth nonce for {}", sid);
                 Ok(nonce)
             }
             Err(e) => {
@@ -475,7 +476,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
         let value = Utc::now().timestamp_millis().to_string();
         match cache.set(key, value, Some(3600_000)).await {
             std::result::Result::Ok(_) => {
-                tracing::info!("Logout success for {}", ak);
+                info!("Logout success for {}", ak);
                 Ok(())
             }
             Err(e) => {

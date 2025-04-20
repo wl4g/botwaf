@@ -18,15 +18,13 @@
 // covered by this license must also be released under the GNU GPL license.
 // This includes modifications and derived works.
 
-use std::sync::Arc;
-
+use crate::context::state::BotwafState;
 use anyhow::{Error, Ok};
 use async_trait::async_trait;
 use botwaf_types::user::{DeleteUserRequest, QueryUserRequest, SaveUserRequest, SaveUserRequestWith, User};
 use botwaf_types::{BaseBean, PageRequest, PageResponse};
 use common_audit_log::audit_log;
-
-use crate::context::state::BotwafState;
+use std::sync::Arc;
 
 #[async_trait]
 pub trait IUserHandler: Send {

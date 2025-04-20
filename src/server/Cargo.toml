@@ -9,7 +9,8 @@ workspace = true
 
 [dependencies]
 # Other modules dependencies.
-common-audit-log = { workspace = true }
+common-audit-log.workspace = true
+common-telemetry.workspace = true
 botwaf-types.workspace = true
 botwaf-utils.workspace = true
 

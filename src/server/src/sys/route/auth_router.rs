@@ -42,6 +42,7 @@ use botwaf_types::{
     RespBase,
 };
 use botwaf_utils::{self, webs};
+use common_telemetry::info;
 use hyper::HeaderMap;
 use oauth2::{AuthorizationCode, CsrfToken, Scope, TokenResponse};
 use openidconnect::{
@@ -145,7 +146,7 @@ pub async fn auth_middleware(State(state): State<BotwafState>, req: Request<Body
 
     if is_authenticated {
         // 3. Bind authenticated info to context.
-        tracing::info!("Authenticated user: {:?}", claims);
+        info!("Authenticated user: {:?}", claims);
         SecurityContext::get_instance().bind(claims).await;
 
         // If logged in, and redirect to home page
@@ -699,7 +700,7 @@ async fn handle_callback_github(
                             );
                         }
                     };
-                    tracing::info!("Received github user info {:?}", user_info);
+                    info!("Received github user info {:?}", user_info);
 
                     let github_sub = user_info.id;
                     let github_uname = user_info.login;

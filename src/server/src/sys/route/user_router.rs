@@ -34,6 +34,7 @@ use botwaf_types::{
     user::{DeleteUserResponse, QueryUserResponse, SaveUserRequestWith, SaveUserResponse},
     PageRequest, RespBase,
 };
+use common_telemetry::info;
 
 pub fn init() -> Router<BotwafState> {
     Router::new()
@@ -52,7 +53,7 @@ pub fn init() -> Router<BotwafState> {
 )]
 async fn handle_get_current_user(State(state): State<BotwafState>) -> impl IntoResponse {
     let cur_user = SecurityContext::get_instance().get().await;
-    tracing::info!("Getting for current user: {:?}", cur_user);
+    info!("Getting for current user: {:?}", cur_user);
 
     let cur_user_uid = cur_user.map(|u| u.uid);
     match get_user_handler(&state)
@@ -79,7 +80,7 @@ async fn handle_post_current_user(
     ValidatedJson(param): ValidatedJson<SaveUserRequestWith>,
 ) -> impl IntoResponse {
     let cur_user = SecurityContext::get_instance().get().await;
-    tracing::info!("Configure for current user: {:?}", cur_user);
+    info!("Configure for current user: {:?}", cur_user);
 
     let cur_user_uid = cur_user.map(|u| u.uid);
     match get_user_handler(&state)
