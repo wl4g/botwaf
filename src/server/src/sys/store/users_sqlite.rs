@@ -46,7 +46,7 @@ impl UserSQLiteRepository {
 #[async_trait]
 impl AsyncRepository<User> for UserSQLiteRepository {
     async fn select(&self, user: User, page: PageRequest) -> Result<(PageResponse, Vec<User>), Error> {
-        let result = dynamic_sqlite_query!(user, "users", self.inner.get_pool(), "update_time", page, User).unwrap();
+        let result = dynamic_sqlite_query!(user, "users", self.inner.get_pool(), "update_time", page, User)?;
 
         info!("query users: {:?}", result);
         Ok((result.0, result.1))
@@ -66,15 +66,14 @@ impl AsyncRepository<User> for UserSQLiteRepository {
         let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1 and del_flag = 0")
             .bind(id)
             .fetch_one(self.inner.get_pool())
-            .await
-            .unwrap();
+            .await?;
 
         info!("query user: {:?}", user);
         Ok(user)
     }
 
     async fn insert(&self, mut user: User) -> Result<i64, Error> {
-        let inserted_id = dynamic_sqlite_insert!(user, "users", self.inner.get_pool()).unwrap();
+        let inserted_id = dynamic_sqlite_insert!(user, "users", self.inner.get_pool())?;
         info!("Inserted user.id: {:?}", inserted_id);
         Ok(inserted_id)
 
@@ -96,14 +95,14 @@ impl AsyncRepository<User> for UserSQLiteRepository {
         //   .bind(user.base.update_time)
         //   .bind(user.base.del_flag)
         //   .execute(self.inner.get_pool()).await
-        //   .unwrap();
+        //   ?;
         // info!("Inserted result: {:?}, user.id: {:?}", result, id);
 
         // Ok(id)
     }
 
     async fn update(&self, mut user: User) -> Result<i64, Error> {
-        let updated_id = dynamic_sqlite_update!(user, "users", self.inner.get_pool()).unwrap();
+        let updated_id = dynamic_sqlite_update!(user, "users", self.inner.get_pool())?;
         info!("Updated user.id: {:?}", updated_id);
         Ok(updated_id)
 
@@ -114,16 +113,13 @@ impl AsyncRepository<User> for UserSQLiteRepository {
         //   .bind(param.email)
         //   .bind(id)
         //   .execute(self.inner.get_pool()).await
-        //   .unwrap();
+        //   ?;
         // info!("updated result: {:?}", update_result);
         // Ok(update_result.rows_affected() as i64)
     }
 
     async fn delete_all(&self) -> Result<u64, Error> {
-        let delete_result = sqlx::query("DELETE FROM users")
-            .execute(self.inner.get_pool())
-            .await
-            .unwrap();
+        let delete_result = sqlx::query("DELETE FROM users").execute(self.inner.get_pool()).await?;
 
         info!("Deleted result: {:?}", delete_result);
         Ok(delete_result.rows_affected())
@@ -133,8 +129,7 @@ impl AsyncRepository<User> for UserSQLiteRepository {
         let delete_result = sqlx::query("DELETE FROM users WHERE id = $1 and del_flag = 0")
             .bind(id)
             .execute(self.inner.get_pool())
-            .await
-            .unwrap();
+            .await?;
 
         info!("Deleted result: {:?}", delete_result);
         Ok(delete_result.rows_affected())

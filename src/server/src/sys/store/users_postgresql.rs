@@ -46,7 +46,7 @@ impl UserPostgresRepository {
 #[async_trait]
 impl AsyncRepository<User> for UserPostgresRepository {
     async fn select(&self, user: User, page: PageRequest) -> Result<(PageResponse, Vec<User>), Error> {
-        let result = dynamic_postgres_query!(user, "users", self.inner.get_pool(), "update_time", page, User).unwrap();
+        let result = dynamic_postgres_query!(user, "users", self.inner.get_pool(), "update_time", page, User)?;
         info!("query users: {:?}", result);
         Ok((result.0, result.1))
     }
@@ -55,8 +55,7 @@ impl AsyncRepository<User> for UserPostgresRepository {
         let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1 and del_flag = 0")
             .bind(id)
             .fetch_one(self.inner.get_pool())
-            .await
-            .unwrap();
+            .await?;
 
         info!("query user: {:?}", user);
         Ok(user)
@@ -83,22 +82,19 @@ impl AsyncRepository<User> for UserPostgresRepository {
         // .await
         // .map(|row: sqlx::postgres::PgRow| row.get("id"))?;
 
-        let inserted_id = dynamic_postgres_insert!(user, "users", self.inner.get_pool()).unwrap();
+        let inserted_id = dynamic_postgres_insert!(user, "users", self.inner.get_pool())?;
         info!("Inserted user.id: {:?}", inserted_id);
         Ok(inserted_id)
     }
 
     async fn update(&self, mut user: User) -> Result<i64, Error> {
-        let updated_id = dynamic_postgres_update!(user, "users", self.inner.get_pool()).unwrap();
+        let updated_id = dynamic_postgres_update!(user, "users", self.inner.get_pool())?;
         info!("Updated user.id: {:?}", updated_id);
         Ok(updated_id)
     }
 
     async fn delete_all(&self) -> Result<u64, Error> {
-        let delete_result = sqlx::query("DELETE FROM users")
-            .execute(self.inner.get_pool())
-            .await
-            .unwrap();
+        let delete_result = sqlx::query("DELETE FROM users").execute(self.inner.get_pool()).await?;
 
         info!("Deleted result: {:?}", delete_result);
         Ok(delete_result.rows_affected())
@@ -108,8 +104,7 @@ impl AsyncRepository<User> for UserPostgresRepository {
         let delete_result = sqlx::query("DELETE FROM users WHERE id = $1 and del_flag = 0")
             .bind(id)
             .execute(self.inner.get_pool())
-            .await
-            .unwrap();
+            .await?;
 
         info!("Deleted result: {:?}", delete_result);
         Ok(delete_result.rows_affected())
