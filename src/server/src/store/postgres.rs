@@ -238,7 +238,9 @@ macro_rules! dynamic_postgres_insert {
             //  .map(|s| s.as_str())
             //  .collect::<Vec<&str>>()
             //  .join(",");
-            let query = format!("INSERT INTO {} ({}) VALUES ({}) RETURNING id", $table, fields.join(","), values.join(","));
+            // e.g: INSERT INTO my_table (id, update_time) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET update_time = CURRENT_TIMESTAMP(13) RETURNING id;
+            let query = format!("INSERT INTO {} ({}) VALUES ({}) ON CONFLICT (id) DO UPDATE SET {} RETURNING id",
+                $table, fields.join(","), values.join(","), "update_time = CURRENT_TIMESTAMP(13)");
 
             let mut operator = sqlx::query(&query);
             for param in params.iter() {
