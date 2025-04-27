@@ -18,7 +18,7 @@
 -- covered by this license must also be released under the GNU GPL license.
 -- This includes modifications and derived works.
 
-create table if not exists users (
+create table if not exists sys_user (
     id integer primary key not null,
     name varchar(64) null, -- "账号昵称"
     email varchar(64) null, -- "邮箱, 可用于登录需唯一"

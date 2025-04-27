@@ -137,13 +137,13 @@ impl AsyncRepository<User> for UserPostgresRepository {
         //     Err(error) => Err(error.into()),
         // }
 
-        let result = dynamic_postgres_query!(user, "users", self.inner.get_pool(), "update_time", page, User)?;
+        let result = dynamic_postgres_query!(user, "sys_user", self.inner.get_pool(), "update_time", page, User)?;
         info!("query users: {:?}", result);
         Ok((result.0, result.1))
     }
 
     async fn select_by_id(&self, id: i64) -> Result<User, Error> {
-        let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1 and del_flag = 0")
+        let user = sqlx::query_as::<_, User>("SELECT * FROM sys_user WHERE id = $1 and del_flag = 0")
             .bind(id)
             .fetch_one(self.inner.get_pool())
             .await?;
@@ -217,20 +217,22 @@ impl AsyncRepository<User> for UserPostgresRepository {
     }
 
     async fn update(&self, mut user: User) -> Result<i64, Error> {
-        let updated_id = dynamic_postgres_update!(user, "users", self.inner.get_pool())?;
+        let updated_id = dynamic_postgres_update!(user, "sys_user", self.inner.get_pool())?;
         info!("Updated user.id: {:?}", updated_id);
         Ok(updated_id)
     }
 
     async fn delete_all(&self) -> Result<u64, Error> {
-        let delete_result = sqlx::query("DELETE FROM users").execute(self.inner.get_pool()).await?;
+        let delete_result = sqlx::query("DELETE FROM sys_user")
+            .execute(self.inner.get_pool())
+            .await?;
 
         info!("Deleted result: {:?}", delete_result);
         Ok(delete_result.rows_affected())
     }
 
     async fn delete_by_id(&self, id: i64) -> Result<u64, Error> {
-        let delete_result = sqlx::query("DELETE FROM users WHERE id = $1 and del_flag = 0")
+        let delete_result = sqlx::query("DELETE FROM sys_user WHERE id = $1 and del_flag = 0")
             .bind(id)
             .execute(self.inner.get_pool())
             .await?;

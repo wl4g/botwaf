@@ -40,7 +40,7 @@ pub struct UserMongoRepository {
 impl UserMongoRepository {
     pub async fn new(config: &MongoAppDBProperties) -> Result<Self, Error> {
         let inner = Arc::new(MongoRepository::new(config).await?);
-        let collection = inner.get_database().collection("users");
+        let collection = inner.get_database().collection("sys_user");
         Ok(UserMongoRepository { inner, collection })
     }
 }
