@@ -120,7 +120,7 @@ impl BotwafForwarderManager {
         let uri = req.uri();
 
         // 1. Exclude if there is any path excluded.
-        if auths::is_passed_request(&state.config, uri) {
+        if auths::is_anonymous_request(&state.config, uri) {
             return next.run(req).await;
         }
 

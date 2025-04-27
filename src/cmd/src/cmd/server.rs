@@ -41,6 +41,7 @@ use botwaf_server::{
 };
 use botwaf_utils::{panics::PanicHelper, tokio_signal::tokio_graceful_shutdown_signal};
 use clap::Command;
+use common_telemetry::{debug, error, info};
 use std::{env, future::Future, pin::Pin, sync::Arc};
 use tokio::{net::TcpListener, sync::oneshot};
 use tower::ServiceBuilder;
@@ -74,7 +75,7 @@ impl WebServer {
         let signal_handle = ManagementServer::start(&config, true, signal_s).await;
 
         signal_r.await.expect("Failed to start Management server.");
-        tracing::info!("Management server is started");
+        info!("Management server is started");
 
         // let dummy_addition_middleware = None::<
         //     fn(State<BotwafState>, Request<Body>, Next) -> Pin<Box<dyn Future<Output = IntoResponse> + Send + 'static>>,
@@ -95,10 +96,8 @@ impl WebServer {
 
         let app_state = BotwafState::new(&config).await;
 
-        // let a = auth_middleware;
-
         // 1. Merge the biz modules routes.
-        tracing::debug!("Register Web server app routers ...");
+        debug!("Register Web server app routers ...");
         let mut register_router = Router::new().merge(auth_router()).merge(user_router());
 
         // 1.1 Merge the addition router.
@@ -133,7 +132,7 @@ impl WebServer {
 
         // 3. Merge the swagger router.
         if config.swagger.enabled {
-            tracing::debug!("Register Web server swagger middlewares ...");
+            debug!("Register Web server swagger middlewares ...");
             app_router = app_router.merge(swagger::init(&config));
         }
 
@@ -142,7 +141,7 @@ impl WebServer {
         // The later the higher the priority? For example, if auth_middleware is set at the end, it will
         // enter when requesting '/', otherwise it will not enter if it is set at the front, and will
         // directly enter handle_root().
-        tracing::debug!("Register Web server auth middlewares ...");
+        debug!("Register Web server auth middlewares ...");
         app_router = app_router.layer(
             ServiceBuilder::new()
                 .layer(axum::middleware::from_fn_with_state(
@@ -167,14 +166,14 @@ impl WebServer {
         //.route_layer(axum::Extension(app_state));
 
         let bind_addr = config.server.get_bind_addr();
-        tracing::info!("Starting web server on {}", bind_addr);
+        info!("Starting web server on {}", bind_addr);
         let listener = match TcpListener::bind(&bind_addr).await {
             Ok(l) => {
-                tracing::info!("Web server is ready on {}", bind_addr);
+                info!("Web server is ready on {}", bind_addr);
                 l
             }
             Err(e) => {
-                tracing::error!("Failed to bind to {}: {}", bind_addr, e);
+                error!("Failed to bind to {}: {}", bind_addr, e);
                 panic!("Failed to bind to {}: {}", bind_addr, e);
             }
         };
@@ -185,10 +184,10 @@ impl WebServer {
             .await
         {
             Ok(_) => {
-                tracing::info!("Web server shut down gracefully");
+                info!("Web server shut down gracefully");
             }
             Err(e) => {
-                tracing::error!("Error running web server: {}", e);
+                error!("Error running web server: {}", e);
                 panic!("Error starting API server: {}", e);
             }
         }

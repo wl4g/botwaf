@@ -109,7 +109,7 @@ pub async fn auth_middleware(State(state): State<BotwafState>, req: Request<Body
     let path = auths::clean_context_path(&state.config.server.context_path, uri.path());
 
     // 1. Exclude if there is any path excluded.
-    if auths::is_passed_request(&state.config, uri) {
+    if auths::is_anonymous_request(&state.config, uri) {
         return next.run(req).await;
     }
 

@@ -165,7 +165,7 @@ pub fn join_context_path(config: &AppConfig, path: String) -> String {
     }
 }
 
-pub fn is_passed_request(config: &Arc<AppConfig>, uri: &Uri) -> bool {
+pub fn is_anonymous_request(config: &Arc<AppConfig>, uri: &Uri) -> bool {
     let path = clean_context_path(&config.server.context_path, uri.path());
     // 1. Exclude paths that don't require authentication.
     // 1.1 Paths that must be excluded according to the authentication mechanism's requirements.
@@ -178,8 +178,8 @@ pub fn is_passed_request(config: &Arc<AppConfig>, uri: &Uri) -> bool {
     if config
         .auth_anonymous_glob_matcher
         .as_ref()
-        .map(|glob| glob.is_match(path))
-        .unwrap_or(false)
+        .iter()
+        .any(|glob| glob.is_match(path))
     {
         // If it is an anonymous path, pass it directly.
         return true;
