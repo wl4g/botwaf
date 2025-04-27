@@ -23,7 +23,7 @@ pub mod modules;
 pub mod sys;
 
 use anyhow::Error;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
@@ -37,7 +37,7 @@ pub struct BaseBean {
     #[schema(rename = "id")]
     pub id: Option<i64>,
     #[schema(rename = "status")]
-    pub status: Option<i8>,
+    pub status: Option<i32>,
     #[sqlx(rename = "create_by")]
     #[schema(read_only = true)]
     // Notice: Since we are currently using serde serialization to implement custom ORM,
@@ -46,22 +46,43 @@ pub struct BaseBean {
     //#[serde(rename = "createBy")]
     pub create_by: Option<String>,
     #[schema(read_only = true)]
-    pub create_time: Option<i64>,
+    pub create_time: Option<DateTime<Utc>>,
     #[schema(read_only = true)]
     pub update_by: Option<String>,
     #[schema(read_only = true)]
-    pub update_time: Option<i64>,
+    pub update_time: Option<DateTime<Utc>>,
     #[serde(skip)]
     pub del_flag: Option<i32>,
 }
 
 impl BaseBean {
-    pub fn new_default(id: Option<i64>) -> Self {
-        Self::new(id, None, None)
+    pub fn new_empty() -> Self {
+        Self {
+            id: None,
+            status: None,
+            create_by: None,
+            create_time: None,
+            update_by: None,
+            update_time: None,
+            del_flag: None,
+        }
     }
 
-    pub fn new(id: Option<i64>, create_by: Option<String>, update_by: Option<String>) -> Self {
-        let now = Utc::now().timestamp_millis();
+    pub fn new_with_id(id: Option<i64>) -> Self {
+        let now = Utc::now();
+        Self {
+            id,
+            status: Some(0),
+            create_by: None,
+            create_time: Some(now),
+            update_by: None,
+            update_time: Some(now),
+            del_flag: Some(0),
+        }
+    }
+
+    pub fn new_with_by(id: Option<i64>, create_by: Option<String>, update_by: Option<String>) -> Self {
+        let now = Utc::now();
         Self {
             id,
             status: Some(0),
@@ -76,14 +97,14 @@ impl BaseBean {
     pub async fn pre_insert(&mut self, create_by: Option<String>) -> i64 {
         self.id = Some(SnowflakeIdGenerator::default_next_jssafe());
         self.create_by = create_by;
-        self.create_time = Some(Utc::now().timestamp_millis());
+        self.create_time = Some(Utc::now());
         self.del_flag = Some(0);
         self.id.unwrap()
     }
 
     pub async fn pre_update(&mut self, update_by: Option<String>) {
         self.update_by = update_by;
-        self.update_time = Some(Utc::now().timestamp_millis());
+        self.update_time = Some(Utc::now());
         self.del_flag = Some(0);
     }
 }

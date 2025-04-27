@@ -16,7 +16,7 @@ botwaf-utils.workspace = true
 axum.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-utoipa.workspace = true
+utoipa = { workspace = true, features = ["chrono"] }
 validator.workspace = true
 chrono.workspace = true
 hyper.workspace = true

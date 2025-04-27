@@ -57,7 +57,7 @@ pub struct QueryUserApiV1Request {
 impl QueryUserApiV1Request {
     pub fn to_user(&self) -> User {
         User {
-            base: BaseBean::new(None, None, None),
+            base: BaseBean::new_with_by(None, None, None),
             name: Some(self.name.clone().unwrap_or_default()),
             email: Some(self.email.clone().unwrap_or_default()),
             phone: self.phone.clone(),
@@ -131,7 +131,7 @@ pub struct SaveUserApiV1Request {
 impl SaveUserApiV1Request {
     pub fn to_user(&self) -> User {
         User {
-            base: BaseBean::new_default(self.id),
+            base: BaseBean::new_with_id(self.id),
             name: self.name.clone(),
             email: self.email.clone(),
             phone: self.phone.clone(),

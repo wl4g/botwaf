@@ -84,7 +84,7 @@ impl<'a> IUserHandler for UserHandler<'a> {
         ethers_address: Option<String>,
     ) -> Result<Option<Arc<User>>, Error> {
         let param = User {
-            base: BaseBean::new(id, None, None),
+            base: BaseBean::new_with_id(id),
             name,
             email,
             phone,

@@ -259,11 +259,6 @@ macro_rules! dynamic_sqlite_insert {
                 return Ok(-1);
             }
 
-            // let fields_str = fields
-            //  .iter()
-            //  .map(|s| s.as_str())
-            //  .collect::<Vec<&str>>()
-            //  .join(",");
             let query = format!("INSERT OR IGNORE INTO {} ({}) VALUES ({})", $table, fields.join(","), values.join(","));
 
             let mut operator = sqlx::query(&query);

@@ -121,67 +121,94 @@ impl<T: Any + Send + Sync> AsyncRepository<T> for PostgresRepository<T> {
 #[macro_export]
 macro_rules! dynamic_postgres_query {
     ($bean:expr, $table:expr, $pool:expr, $order_by:expr, $page:expr, $($t:ty),+) => {
-          {
-              // Notice:
-              // 1. (SQLite) Because the ORM library is not used for the time being, the fields are dynamically
-              // parsed based on serde_json, so the #[serde(rename="xx")] annotation is effective.
-              // 2. (MongoDB) The underlying BSON serialization is also based on serde, so using #[serde(rename="xx")] is also valid
-              // TODO: It is recommended to use an ORM framework, see: https://github.com/diesel-rs/diesel
-              let serialized = serde_json::to_value(&$bean).unwrap();
-              let obj = serialized.as_object().unwrap();
-
-              let mut fields = Vec::new();
-              let mut params = Vec::new();
-              for (key, value) in obj {
-                  if !value.is_null() {
+        {
+            use chrono::{DateTime, Utc};
+            use botwaf_utils::types::GenericValue;
+            // Notice:
+            // 1. (SQLite) Because the ORM library is not used for the time being, the fields are dynamically
+            // parsed based on serde_json, so the #[serde(rename="xx")] annotation is effective.
+            // 2. (MongoDB) The underlying BSON serialization is also based on serde, so using #[serde(rename="xx")] is also valid
+            // TODO: It is recommended to use an ORM framework, see: https://github.com/diesel-rs/diesel
+            let serialized = serde_json::to_value(&$bean).unwrap();
+            let obj = serialized.as_object().unwrap();
+            let mut fields = Vec::new();
+            let mut params = Vec::new();
+            let mut index = 0;
+            for (key, value) in obj {
+                if !value.is_null() {
                     let v = value.as_str().unwrap_or("");
                     if !v.is_empty() {
-                        fields.push(format!("{} = ?", key));
-                        params.push(v.to_string());
+                        index += 1;
+                        // Notice: Must use $x expression? otherwise, the sqlx will not work.
+                        // e.g: "SELECT COUNT(1) as count FROM my_table WHERE create_time = $1 AND update_time = $2"
+                        fields.push(format!("{} = ${}", key, index));
+                        if key == "create_time" || key == "update_time" {
+                            let dt = DateTime::parse_from_rfc3339(v)?;
+                            params.push(GenericValue::DateTime(dt.with_timezone(&Utc)));
+                        } else {
+                            params.push(GenericValue::String(v.to_string()));
+                        }
                     }
-                  }
-              }
-              if let Some(id) = $bean.base.id {
-                  fields.push("id = ?".to_string());
-                  params.push(id.to_string());
-              }
-              let where_clause = if fields.is_empty() {
-                  "1=1".to_string()
-              } else {
-                  fields.join(" AND ")
-              };
+                }
+            }
+            if let Some(id) = $bean.base.id {
+                fields.push("id = ?".to_string());
+                params.push(GenericValue::Int64(id));
+            }
+            let where_clause = if fields.is_empty() {
+                "1=1".to_string()
+            } else {
+                fields.join(" AND ")
+            };
+            // Queries to get total count.
+            let total_query = format!("SELECT COUNT(1) FROM {} WHERE {}", $table, where_clause);
+            use sqlx::Row;
+            let mut total_operator = sqlx::query(&total_query);
+            for param in params.iter() {
+                if let GenericValue::Bool(v) = param {
+                    total_operator = total_operator.bind(v);
+                } else if let GenericValue::Int64(v) = param {
+                    total_operator = total_operator.bind(v);
+                } else if let GenericValue::Float64(v) = param {
+                    total_operator = total_operator.bind(v);
+                } else if let GenericValue::String(v) = param {
+                    total_operator = total_operator.bind(v);
+                } else if let GenericValue::DateTime(v) = param {
+                    total_operator = total_operator.bind(v);
+                }
+            }
+            let total_count = total_operator.fetch_one($pool).await?.get::<i64, _>(0);
 
-              // Queries to get total count.
-              let total_query = format!("SELECT COUNT(1) FROM {} WHERE {}", $table, where_clause);
-              use sqlx::Row;
-              let total_count = sqlx::query(&total_query)
-                .fetch_one($pool)
-                .await
-                .map(|row| row.get::<i64, _>(0) as i64)
-                .unwrap();
-
-              // Queries to get data.
-              let query = format!("SELECT * FROM {} WHERE {} ORDER BY {} LIMIT {} OFFSET {}",
-                    $table, where_clause, $order_by, $page.get_limit(), $page.get_offset());
-
-              let mut operator = sqlx::query_as::<_, $($t),+>(&query);
-              for param in params.iter() {
-                  operator = operator.bind(param);
-              }
-
-              match operator.fetch_all($pool).await {
-                  std::result::Result::Ok(result) => {
-                    let page = PageResponse::new(
-                        Some(total_count),
-                        Some($page.get_offset()),
-                        Some($page.get_limit()));
-                      Ok((page, result))
-                  },
-                  Err(error) => {
-                      Err(error.into())
-                  }
-              }
-          }
+            // Queries to get data.
+            let query = format!("SELECT * FROM {} WHERE {} ORDER BY {} LIMIT {} OFFSET {}",
+                  $table, where_clause, $order_by, $page.get_limit(), $page.get_offset());
+            let mut operator = sqlx::query_as::<_, $($t),+>(&query);
+            for param in params.iter() {
+                if let GenericValue::Bool(v) = param {
+                    operator = operator.bind(v);
+                } else if let GenericValue::Int64(v) = param {
+                    operator = operator.bind(v);
+                } else if let GenericValue::Float64(v) = param {
+                    operator = operator.bind(v);
+                } else if let GenericValue::String(v) = param {
+                    operator = operator.bind(v);
+                } else if let GenericValue::DateTime(v) = param {
+                    operator = operator.bind(v);
+                }
+            }
+            match operator.fetch_all($pool).await {
+                std::result::Result::Ok(result) => {
+                    let p = PageResponse::new(
+                      Some(total_count),
+                      Some($page.get_offset()),
+                      Some($page.get_limit()));
+                    Ok((p, result))
+                },
+                Err(error) => {
+                    Err(error.into())
+                }
+            }
+        }
     };
 }
 
@@ -189,6 +216,7 @@ macro_rules! dynamic_postgres_query {
 macro_rules! dynamic_postgres_insert {
     ($bean:expr, $table:expr, $pool:expr) => {
         {
+            use chrono::{DateTime, Utc};
             use botwaf_utils::types::GenericValue;
             use crate::util::auths::SecurityContext;
 
@@ -215,16 +243,28 @@ macro_rules! dynamic_postgres_insert {
                         values.push("?");
                         params.push(GenericValue::Bool(v));
                     } else if value.is_number() {
-                        let v = value.as_i64().unwrap();
-                        fields.push(key.as_str());
-                        values.push("?");
-                        params.push(GenericValue::Int64(v));
+                        if value.is_i64() {
+                            let v = value.as_i64().unwrap();
+                            fields.push(key.as_str());
+                            values.push("?");
+                            params.push(GenericValue::Int64(v));
+                        } else if value.is_f64() {
+                            let v = value.as_f64().unwrap();
+                            fields.push(key.as_str());
+                            values.push("?");
+                            params.push(GenericValue::Float64(v));
+                        }
                     } else if value.is_string() {
                         let v = value.as_str().unwrap_or("");
                         if !v.is_empty() {
                             fields.push(key.as_str());
                             values.push("?");
-                            params.push(GenericValue::String(v.to_string()));
+                            if key == "create_time" || key == "update_time" {
+                                let dt = DateTime::parse_from_rfc3339(v)?;
+                                params.push(GenericValue::DateTime(dt.with_timezone(&Utc)));
+                            } else {
+                                params.push(GenericValue::String(v.to_string()));
+                            }
                         }
                     }
                 }
@@ -233,12 +273,7 @@ macro_rules! dynamic_postgres_insert {
                 return Ok(-1);
             }
 
-            // let fields_str = fields
-            //  .iter()
-            //  .map(|s| s.as_str())
-            //  .collect::<Vec<&str>>()
-            //  .join(",");
-            // e.g: INSERT INTO my_table (id, update_time) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET update_time = CURRENT_TIMESTAMP(13) RETURNING id;
+            // e.g: 'INSERT INTO ch_ethereum_checkpoint ( ID, last_processed_block ) VALUES ( 2, 12345 ) ON CONFLICT ( ID ) DO UPDATE SET update_time = CURRENT_TIMESTAMP(11) RETURNING ID;'
             let query = format!("INSERT INTO {} ({}) VALUES ({}) ON CONFLICT (id) DO UPDATE SET {} RETURNING id",
                 $table, fields.join(","), values.join(","), "update_time = CURRENT_TIMESTAMP(13)");
 
@@ -248,7 +283,11 @@ macro_rules! dynamic_postgres_insert {
                     operator = operator.bind(v);
                 } else if let GenericValue::Int64(v) = param {
                     operator = operator.bind(v);
+                } else if let GenericValue::Float64(v) = param {
+                    operator = operator.bind(v);
                 } else if let GenericValue::String(v) = param {
+                    operator = operator.bind(v);
+                } else if let GenericValue::DateTime(v) = param {
                     operator = operator.bind(v);
                 }
             }

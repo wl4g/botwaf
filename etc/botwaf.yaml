@@ -82,7 +82,7 @@ auth:
     - "/public/**"
     - "/static/**"
   oidc:
-    enabled: true
+    enabled: false
     client-id: "<YOUR_OIDC_CLIENT_ID>" # Refer to: .env
     #client-secret: "<YOUR_OIDC_CLIENT_SECRET>" # Refer to: .env
     issue-url: "https://iam.wl4g.com/realms/master"

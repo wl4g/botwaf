@@ -51,7 +51,7 @@ pub struct User {
 impl Default for User {
     fn default() -> Self {
         User {
-            base: BaseBean::new_default(None),
+            base: BaseBean::new_empty(),
             name: None,
             email: None,
             phone: None,
@@ -169,7 +169,7 @@ pub struct QueryUserRequest {
 impl QueryUserRequest {
     pub fn to_user(&self) -> User {
         User {
-            base: BaseBean::new(None, None, None),
+            base: BaseBean::new_empty(),
             name: Some(self.name.clone().unwrap_or_default()),
             email: Some(self.email.clone().unwrap_or_default()),
             phone: self.phone.clone(),
@@ -245,7 +245,7 @@ pub struct SaveUserRequest {
 impl SaveUserRequest {
     pub fn to_user(&self) -> User {
         User {
-            base: BaseBean::new_default(self.id),
+            base: BaseBean::new_with_id(self.id),
             name: self.name.clone(), // self.name.as_ref().map(|n| n.to_string())
             email: self.email.clone(),
             phone: self.phone.clone(),
