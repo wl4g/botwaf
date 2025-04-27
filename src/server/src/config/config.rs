@@ -1038,7 +1038,10 @@ fn init() -> Arc<AppConfig> {
 
     let config = AppConfig::new(&yaml_config);
 
-    if env::var("BOTWAF_CFG_VERBOSE").is_ok() || env::var("VERBOSE").is_ok() {
+    if env::var("LINKPORTAL_CFG_VERBOSE")
+        .unwrap_or_else(|_| env::var("VERBOSE").unwrap_or_else(|_| "false".to_owned()))
+        .eq_ignore_ascii_case("true")
+    {
         println!("If you don't want to print the loaded configuration details, you can disable it by set up BOTWAF_CFG_VERBOSE=false.");
         println!(
             "Loaded the config details: {}",

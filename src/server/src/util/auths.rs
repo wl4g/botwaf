@@ -26,6 +26,7 @@ use axum::body::Body;
 use botwaf_types::sys::auth::{LoggedResponse, TokenWrapper};
 use botwaf_utils::{base64s::Base64Helper, webs};
 use chrono::{Duration, Utc};
+use common_telemetry::{debug, error, warn};
 use hyper::{HeaderMap, Response, StatusCode, Uri};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use lazy_static::lazy_static;
@@ -178,8 +179,8 @@ pub fn is_anonymous_request(config: &Arc<AppConfig>, uri: &Uri) -> bool {
     if config
         .auth_anonymous_glob_matcher
         .as_ref()
-        .iter()
-        .any(|glob| glob.is_match(path))
+        .map(|glob| glob.is_match(path))
+        .unwrap_or(false)
     {
         // If it is an anonymous path, pass it directly.
         return true;
@@ -204,7 +205,7 @@ impl SecurityContext {
     }
 
     pub async fn bind(&self, user: Option<AuthUserClaims>) {
-        tracing::debug!("Binding from user: {:?}", user);
+        debug!("Binding from user: {:?}", user);
         match user {
             Some(user) => {
                 // Notice: 必须在此函数中执行 write() 获取写锁, 若在外部 routes/auths.rs#auth_middleware() 中获取写锁,
@@ -215,14 +216,14 @@ impl SecurityContext {
             }
             None => {}
         }
-        tracing::debug!("Binded from user: {:?}", self.get().await);
+        debug!("Binded from user: {:?}", self.get().await);
     }
 
     pub async fn get(&self) -> Option<AuthUserClaims> {
         match self.current_user.try_read() {
             Ok(read_guard) => read_guard.clone(),
             Err(e) => {
-                tracing::error!("Unable to acquire read lock. reason: {:?}", e);
+                error!("Unable to acquire read lock. reason: {:?}", e);
                 None
             }
         }
@@ -232,7 +233,7 @@ impl SecurityContext {
         match self.get().await {
             Some(claims) => Some(claims.uid),
             None => {
-                tracing::error!("No found current user claims sub.");
+                error!("No found current user claims sub.");
                 None
             }
         }
@@ -242,7 +243,7 @@ impl SecurityContext {
         match self.get().await {
             Some(claims) => Some(claims.uname),
             None => {
-                tracing::error!("No found current user claims uname.");
+                warn!("No found current user claims uname.");
                 None
             }
         }
@@ -252,7 +253,7 @@ impl SecurityContext {
         match self.get().await {
             Some(claims) => Some(claims.email),
             None => {
-                tracing::error!("No found current user claims email.");
+                warn!("No found current user claims email.");
                 None
             }
         }
